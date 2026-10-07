@@ -10,12 +10,12 @@ use App\Models\User;
 |--------------------------------------------------------------------------
 */
 
-// Halaman Landing / Utama
+// 1. Halaman Landing / Utama (Public Reader)
 Route::get('/', function () {
     return view('landing');
 });
 
-// Route Login & Register Form (Ganti view sesuai lokasi file blade auth kamu)
+// 2. Route Auth (Form Login & Register)
 Route::get('/login', function () {
     return view('auth.login');
 })->name('login');
@@ -24,24 +24,27 @@ Route::get('/register', function () {
     return view('auth.register');
 })->name('register');
 
-// Route Dashboard Berdasarkan Role
+// 3. Route Dashboard Utama Berdasarkan Role Pengguna yang Login
 Route::get('/dashboard', function () {
-    $role = Auth::user()->role ?? 'Author';
+    $user = Auth::user();
 
-    if ($role === 'Administrator') {
+    if (!$user) {
+        return redirect()->route('login');
+    }
+
+    if ($user->role === 'Administrator') {
         return view('roles.admin.dashboard');
-    } elseif ($role === 'Editor') {
+    } elseif ($user->role === 'Editor') {
         return view('roles.editor.dashboard');
-    } elseif ($role === 'Author') {
-        return view('roles.author.dashboard');
-    } elseif ($role === 'Reviewer') {
+    } elseif ($user->role === 'Reviewer') {
         return view('roles.reviewer.dashboard');
     }
 
-    return redirect('/');
+    // Default untuk Author
+    return view('roles.author.dashboard');
 })->middleware(['auth'])->name('dashboard');
 
-// Route Logout
+// 4. Route Logout
 Route::post('/logout', function () {
     Auth::logout();
     request()->session()->invalidate();
@@ -49,7 +52,7 @@ Route::post('/logout', function () {
     return redirect('/');
 })->name('logout');
 
-// Route Simulasi Dev Mode (Hanya untuk Testing Tampilan)
+// 5. Route Simulasi Dev Mode (Dipaksa updateOrCreate agar Role selalu Akurat)
 Route::get('/dev-login/{role}', function ($role) {
     $allowedRoles = ['Administrator', 'Editor', 'Author', 'Reviewer'];
     
@@ -57,8 +60,8 @@ Route::get('/dev-login/{role}', function ($role) {
         abort(404, 'Role tidak ditemukan.');
     }
 
-    // Buat atau ambil user dummy di database
-    $user = User::firstOrCreate(
+    // Memaksa pembaruan data user & role di database
+    $user = User::updateOrCreate(
         ['email' => strtolower($role) . '@brida.com'],
         [
             'name' => 'Akun Tes ' . $role,
@@ -69,6 +72,7 @@ Route::get('/dev-login/{role}', function ($role) {
 
     // Login otomatis
     Auth::login($user);
+    request()->session()->regenerate();
 
     return redirect()->route('dashboard');
 });
