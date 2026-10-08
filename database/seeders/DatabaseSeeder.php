@@ -3,23 +3,31 @@
 namespace Database\Seeders;
 
 use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
     /**
-     * Seed the application's database.
+     * Seed 4 akun default multi-role.
+     * Password tunggal: password123 (satu hash, DRY).
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        $password = Hash::make('password123');
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        $users = [
+            ['name' => 'Admin SIMPIL',    'email' => 'admin@example.com',    'role' => 'Administrator'],
+            ['name' => 'Author SIMPIL',   'email' => 'author@example.com',   'role' => 'Author'],
+            ['name' => 'Editor SIMPIL',   'email' => 'editor@example.com',   'role' => 'Editor'],
+            ['name' => 'Reviewer SIMPIL', 'email' => 'reviewer@example.com', 'role' => 'Reviewer'],
+        ];
+
+        foreach ($users as $data) {
+            User::updateOrCreate(
+                ['email' => $data['email']],
+                array_merge($data, ['password' => $password])
+            );
+        }
     }
 }

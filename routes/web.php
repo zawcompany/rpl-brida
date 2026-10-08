@@ -1,8 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Auth;
-use App\Models\User;
+use App\Http\Controllers\AuthController;
 
 /*
 |--------------------------------------------------------------------------
@@ -10,68 +9,47 @@ use App\Models\User;
 |--------------------------------------------------------------------------
 */
 
-// 1. Halaman Landing / Utama (Public Reader)
-Route::get('/', function () {
-    return view('landing');
+// 1. Landing page
+Route::get('/', fn() => view('landing'));
+
+// 2. Auth routes — GET untuk form, POST untuk proses
+Route::middleware('guest')->group(function () {
+    Route::get('/login',    [AuthController::class, 'showLogin'])->name('login');
+    Route::post('/login',   [AuthController::class, 'login']);
+
+    Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
+    Route::post('/register', [AuthController::class, 'register']);
 });
 
-// 2. Route Auth (Form Login & Register)
-Route::get('/login', function () {
-    return view('auth.login');
-})->name('login');
-
-Route::get('/register', function () {
-    return view('auth.register');
-})->name('register');
-
-// 3. Route Dashboard Utama Berdasarkan Role Pengguna yang Login
+// 3. Dashboard berbasis role — hanya untuk user terautentikasi
 Route::get('/dashboard', function () {
-    $user = Auth::user();
+    $roleViews = [
+        'Administrator' => 'roles.admin.dashboard',
+        'Editor'        => 'roles.editor.dashboard',
+        'Reviewer'      => 'roles.reviewer.dashboard',
+        'Author'        => 'roles.author.dashboard',
+    ];
 
-    if (!$user) {
-        return redirect()->route('login');
-    }
+    $role = auth()->user()->role;
+    $view = $roleViews[$role] ?? $roleViews['Author'];
 
-    if ($user->role === 'Administrator') {
-        return view('roles.admin.dashboard');
-    } elseif ($user->role === 'Editor') {
-        return view('roles.editor.dashboard');
-    } elseif ($user->role === 'Reviewer') {
-        return view('roles.reviewer.dashboard');
-    }
+    return view($view);
+})->middleware('auth')->name('dashboard');
 
-    // Default untuk Author
-    return view('roles.author.dashboard');
-})->middleware(['auth'])->name('dashboard');
+// 4. Logout
+Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
 
-// 4. Route Logout
-Route::post('/logout', function () {
-    Auth::logout();
-    request()->session()->invalidate();
-    request()->session()->regenerateToken();
-    return redirect('/');
-})->name('logout');
+// 5. Dev-mode shortcut (hapus di production)
+Route::get('/dev-login/{role}', function (string $role) {
+    $allowed = ['Administrator', 'Editor', 'Author', 'Reviewer'];
+    abort_unless(in_array($role, $allowed), 404);
 
-// 5. Route Simulasi Dev Mode (Dipaksa updateOrCreate agar Role selalu Akurat)
-Route::get('/dev-login/{role}', function ($role) {
-    $allowedRoles = ['Administrator', 'Editor', 'Author', 'Reviewer'];
-    
-    if (!in_array($role, $allowedRoles)) {
-        abort(404, 'Role tidak ditemukan.');
-    }
-
-    // Memaksa pembaruan data user & role di database
-    $user = User::updateOrCreate(
+    $user = \App\Models\User::updateOrCreate(
         ['email' => strtolower($role) . '@brida.com'],
-        [
-            'name' => 'Akun Tes ' . $role,
-            'password' => bcrypt('password123'),
-            'role' => $role,
-        ]
+        ['name' => 'Akun Tes ' . $role, 'password' => bcrypt('password123'), 'role' => $role]
     );
 
-    // Login otomatis
-    Auth::login($user);
+    auth()->login($user);
     request()->session()->regenerate();
 
     return redirect()->route('dashboard');
