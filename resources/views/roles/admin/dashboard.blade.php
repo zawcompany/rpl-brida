@@ -1,59 +1,86 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden mb-8">
+{{-- WELCOME BANNER --}}
+<div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden mb-6">
     <div class="flex flex-col md:flex-row items-center justify-between p-6 md:p-8">
-        <!-- Sisi Kiri: Teks -->
         <div class="md:w-2/3">
             <p class="text-gray-500 font-medium mb-1">Selamat datang,</p>
-            <h1 class="text-3xl font-bold text-gray-900 mb-4">Administrator</h1>
-            <p class="text-gray-600 leading-relaxed">
-                Anda memiliki kendali penuh atas seluruh aspek sistem. Kelola pengguna, atur hak akses, dan pantau keseluruhan aktivitas di dalam platform untuk memastikan proses berjalan aman, lancar, dan sesuai dengan standar yang ditetapkan.
+            <h1 class="text-3xl font-bold text-gray-900 mb-3">{{ Auth::user()->name }}</h1>
+            <p class="text-gray-600 leading-relaxed text-sm">
+                Anda memiliki kendali atas pengguna dan hak akses sistem. Kelola akun, atur role, dan pantau aktivitas platform agar proses berjalan aman dan sesuai standar.
             </p>
         </div>
-        
-        <!-- Sisi Kanan: Ilustrasi -->
         <div class="md:w-1/3 mt-6 md:mt-0 flex justify-end">
-            <img 
-                src="{{ asset('images/administrator.png') }}" 
-                alt="Ilustrasi Administrator" 
-                class="w-48 h-auto object-contain drop-shadow-md"
-                onerror="this.onerror=null; this.src='https://placehold.co/400x300/f3f4f6/4b5563?text=Administrator+Illustration';"
-            >
+            <img src="{{ asset('images/administrator.png') }}" alt="Ilustrasi Administrator"
+                 class="w-48 h-auto object-contain drop-shadow-md"
+                 onerror="this.onerror=null; this.src='https://placehold.co/400x300/f3f4f6/4b5563?text=Administrator+Illustration';">
         </div>
     </div>
 </div>
 
-<!-- Konten Tambahan Dashboard Administrator -->
-<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-    <div class="bg-white p-6 rounded-xl border border-gray-100 shadow-sm flex flex-col items-start">
-        <div class="p-3 bg-red-50 text-red-600 rounded-lg mb-4">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
-            </svg>
+{{-- STAT WIDGETS --}}
+@php
+    $card = 'bg-white rounded-xl border border-gray-200 shadow-sm p-5 flex flex-col gap-3 transition hover:shadow-md hover:-translate-y-0.5';
+    $roleColors = ['Author' => 'bg-gray-100 text-gray-700', 'Editor' => 'bg-purple-100 text-purple-700', 'Reviewer' => 'bg-blue-100 text-blue-700', 'Admin' => 'bg-red-100 text-red-700'];
+@endphp
+<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-6">
+    <a href="{{ route('admin.users.index') }}" class="{{ $card }}">
+        <span class="text-sm font-medium text-gray-500">Total Pengguna Terdaftar</span>
+        <p class="text-3xl font-bold text-gray-900">{{ $stats['total_users'] }}</p>
+        <span class="text-xs text-gray-400">Kelola pengguna →</span>
+    </a>
+
+    <a href="{{ route('admin.roles.index') }}" class="{{ $card }}">
+        <span class="text-sm font-medium text-gray-500">Ringkasan Per-Role</span>
+        <div class="flex flex-wrap gap-1.5">
+            @foreach ($stats['roles'] as $label => $count)
+                <x-editor.badge :color="$roleColors[$label] ?? 'bg-gray-100 text-gray-700'">{{ $label }}: {{ $count }}</x-editor.badge>
+            @endforeach
         </div>
-        <h3 class="text-lg font-bold text-gray-800">Kelola Pengguna</h3>
-        <p class="text-gray-500 text-sm mt-2">Tambah, perbarui, atau hapus akses pengguna dalam sistem.</p>
+        <span class="text-xs text-gray-400">Role & hak akses →</span>
+    </a>
+
+    <div class="{{ $card }}">
+        <span class="text-sm font-medium text-gray-500">Total Naskah Terdaftar</span>
+        <p class="text-3xl font-bold text-gray-900">{{ $stats['total_manuscripts'] }}</p>
+        <span class="text-xs text-gray-400">Seluruh status</span>
     </div>
 
-    <div class="bg-white p-6 rounded-xl border border-gray-100 shadow-sm flex flex-col items-start">
-        <div class="p-3 bg-red-50 text-red-600 rounded-lg mb-4">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
-            </svg>
-        </div>
-        <h3 class="text-lg font-bold text-gray-800">Hak Akses</h3>
-        <p class="text-gray-500 text-sm mt-2">Konfigurasi peran dan wewenang untuk masing-masing tipe akun.</p>
+    <div class="{{ $card }}">
+        <span class="text-sm font-medium text-gray-500">Pengguna Baru (30 Hari)</span>
+        <p class="text-3xl font-bold text-gray-900">{{ $stats['new_users'] }}</p>
+        <span class="text-xs text-gray-400">Sejak {{ now()->subDays(30)->format('d M Y') }}</span>
     </div>
+</div>
 
-    <div class="bg-white p-6 rounded-xl border border-gray-100 shadow-sm flex flex-col items-start">
-        <div class="p-3 bg-red-50 text-red-600 rounded-lg mb-4">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-            </svg>
-        </div>
-        <h3 class="text-lg font-bold text-gray-800">Aktivitas Sistem</h3>
-        <p class="text-gray-500 text-sm mt-2">Tinjau log dan metrik penggunaan platform secara real-time.</p>
+{{-- AUDIT LOG TERBARU --}}
+<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+    <div class="px-5 py-4 border-b border-gray-100">
+        <h2 class="text-base font-bold text-gray-900">Aktivitas Sistem / Audit Log Terbaru</h2>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-100">
+            <thead class="bg-gray-50">
+                <tr>
+                    @foreach (['Waktu', 'Pelaku', 'Aktivitas', 'Alamat IP'] as $header)
+                        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ $header }}</th>
+                    @endforeach
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-50">
+                @forelse ($logs as $log)
+                <tr class="hover:bg-gray-50/60 transition-colors">
+                    <td class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap" title="{{ $log->created_at }}">{{ $log->created_at->diffForHumans() }}</td>
+                    <td class="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">{{ $log->actor?->name ?? 'Sistem' }}</td>
+                    <td class="px-6 py-4 text-sm text-gray-800">{{ $log->description }}</td>
+                    <td class="px-6 py-4 text-xs text-gray-400 whitespace-nowrap">{{ $log->ip_address ?? '—' }}</td>
+                </tr>
+                @empty
+                    @include('roles.editor.partials.empty-row', ['colspan' => 4, 'message' => 'Belum ada aktivitas tercatat.'])
+                @endforelse
+            </tbody>
+        </table>
     </div>
 </div>
 @endsection

@@ -2,21 +2,28 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\RespondsForEditor;
 use App\Http\Requests\Editor\AssignReviewerRequest;
+use App\Http\Requests\Editor\ChangeReviewerRequest;
+use App\Http\Requests\Editor\EditorialDecisionRequest;
+use App\Http\Requests\Editor\ReReviewRequest;
+use App\Http\Resources\ManuscriptSummaryResource;
+use App\Http\Resources\ReviewResource;
 use App\Models\Manuscript;
-use App\Models\ResearchField;
 use App\Services\EditorService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 /**
- * EditorController — hanya bertanggung jawab pada HTTP layer (SRP).
- * Semua logika bisnis didelegasikan ke EditorService.
+ * EditorController — hanya HTTP layer (SRP). Logika bisnis ada di EditorService.
  */
 class EditorController extends Controller
 {
+    use RespondsForEditor;
+
+    private const FILTER_KEYS = ['search', 'date', 'per_page'];
+
     public function __construct(private readonly EditorService $editorService)
     {
     }
@@ -27,10 +34,10 @@ class EditorController extends Controller
 
     public function dashboard(): View
     {
-        $stats          = $this->editorService->getDashboardStats();
-        $recentActivity = $this->editorService->getRecentActivity();
-
-        return view('roles.editor.dashboard', compact('stats', 'recentActivity'));
+        return view('roles.editor.dashboard', [
+            'stats'          => $this->editorService->getDashboardStats(),
+            'recentActivity' => $this->editorService->getRecentActivity(),
+        ]);
     }
 
     // -------------------------------------------------------------------------
@@ -39,77 +46,161 @@ class EditorController extends Controller
 
     public function newManuscripts(Request $request): View|JsonResponse
     {
-        $filters     = $request->only(['search', 'date', 'per_page']);
-        $manuscripts = $this->editorService->getNewManuscripts($filters);
-
-        // Kalau AJAX (dari live-search/pagination JS), kembalikan partial view
-        if ($request->expectsJson() || $request->ajax()) {
-            return response()->json([
-                'html'  => view('roles.editor.partials.manuscript-table-rows', compact('manuscripts'))->render(),
-                'links' => $manuscripts->links('pagination::tailwind')->render(),
-                'total' => $manuscripts->total(),
-            ]);
-        }
-
-        return view('roles.editor.new-manuscripts', compact('manuscripts', 'filters'));
+        return $this->tableResponse(
+            $request,
+            'roles.editor.new-manuscripts',
+            'roles.editor.partials.manuscript-table-rows',
+            $this->editorService->getNewManuscripts($request->only(self::FILTER_KEYS))
+        );
     }
 
-    // -------------------------------------------------------------------------
-    // AJAX: Detail Naskah + Rekomendasi Reviewer (untuk Modal)
-    // -------------------------------------------------------------------------
-
+    /** AJAX: detail naskah + 1 rekomendasi reviewer terbaik (untuk modal). */
     public function manuscriptDetail(Manuscript $manuscript): JsonResponse
     {
+        abort_unless(in_array($manuscript->status, Manuscript::NEW_STATUSES, true), 404);
+
         $manuscript->load(['author', 'researchField']);
-        $recommendations = $this->editorService->getReviewerRecommendations($manuscript);
-        $allReviewers    = \App\Models\User::where('role', 'Reviewer')
-            ->orderBy('name')
-            ->get(['id', 'name']);
 
         return response()->json([
-            'manuscript'      => $manuscript,
-            'recommendations' => $recommendations->map(fn ($r) => [
-                'id'          => $r['reviewer']->id,
-                'name'        => $r['reviewer']->name,
-                'active_load' => $r['active_load'],
-                'matched'     => $r['matched'],
-                'score'       => $r['score'],
-            ]),
-            'all_reviewers'   => $allReviewers,
-            'file_url'        => $manuscript->file_path
-                ? asset('storage/' . $manuscript->file_path)
-                : null,
+            'manuscript'     => ManuscriptSummaryResource::make($manuscript)->resolve(),
+            'recommendation' => $this->editorService->getBestReviewer($manuscript),
+            'reviewers'      => $this->editorService->getAssignableReviewers(),
+            'default_due_at' => $this->editorService->defaultDueDate(),
         ]);
     }
-
-    // -------------------------------------------------------------------------
-    // POST: Proses Keputusan Administrasi Awal
-    // -------------------------------------------------------------------------
 
     public function assignReviewer(AssignReviewerRequest $request, Manuscript $manuscript): JsonResponse
     {
-        // Pastikan naskah masih dalam status "baru" agar tidak duplikat penugasan
-        if (! in_array($manuscript->status, Manuscript::NEW_STATUSES)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Naskah ini sudah diproses sebelumnya.',
-            ], 422);
-        }
+        $decision = $request->validated('decision');
 
-        $updated = $this->editorService->processDecision(
-            manuscript:  $manuscript,
-            decision:    $request->validated('decision'),
-            reviewerId:  $request->validated('reviewer_id'),
-            editorNote:  $request->validated('editor_note'),
-            editorId:    auth()->id(),
+        return $this->perform(
+            fn () => $this->editorService->processDecision(
+                manuscript: $manuscript,
+                decision:   $decision,
+                reviewerId: $request->validated('reviewer_id'),
+                editorNote: $request->validated('editor_note'),
+                editorId:   $request->user()->id,
+                dueAt:      $request->validated('due_at'),
+            ),
+            $decision === 'ditolak' ? 'Naskah berhasil ditolak.' : 'Naskah berhasil diteruskan ke reviewer.'
         );
+    }
 
-        $actionLabel = $updated->status === 'ditolak' ? 'ditolak' : 'diteruskan ke reviewer';
+    // -------------------------------------------------------------------------
+    // Peninjauan Naskah
+    // -------------------------------------------------------------------------
+
+    public function underReview(Request $request): View|JsonResponse
+    {
+        return $this->tableResponse(
+            $request,
+            'roles.editor.under-review',
+            'roles.editor.partials.review-table-rows',
+            $this->editorService->getUnderReview($request->only(self::FILTER_KEYS))
+        );
+    }
+
+    public function reviewDetail(Manuscript $manuscript): JsonResponse
+    {
+        abort_unless(in_array($manuscript->status, Manuscript::REVIEW_STATUSES, true), 404);
+
+        $manuscript->load(['author', 'researchField', 'currentReview.reviewer']);
+        $review = $manuscript->currentReview;
 
         return response()->json([
-            'success' => true,
-            'message' => "Naskah berhasil {$actionLabel}.",
-            'status'  => $updated->status,
+            'manuscript'     => ManuscriptSummaryResource::make($manuscript)->resolve(),
+            'review'         => $review ? ReviewResource::make($review)->resolve() : null,
+            'recommendation' => $review?->isReplaceable()
+                ? $this->editorService->getBestReviewer($manuscript, $review->reviewer_id)
+                : null,
+            'reviewers'      => $this->editorService->getAssignableReviewers($review?->reviewer_id),
+            'default_due_at' => $this->editorService->defaultDueDate(),
         ]);
+    }
+
+    public function sendReminder(Manuscript $manuscript): JsonResponse
+    {
+        return $this->perform(
+            fn () => $this->editorService->sendReminder($manuscript),
+            'Pengingat berhasil dikirim ke reviewer.'
+        );
+    }
+
+    public function changeReviewer(ChangeReviewerRequest $request, Manuscript $manuscript): JsonResponse
+    {
+        return $this->perform(
+            fn () => $this->editorService->replaceReviewer(
+                $manuscript,
+                (int) $request->validated('reviewer_id'),
+                $request->validated('editor_note'),
+                $request->user()->id,
+                $request->validated('due_at'),
+            ),
+            'Reviewer berhasil diganti.'
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // Keputusan Editorial
+    // -------------------------------------------------------------------------
+
+    public function decisions(Request $request): View|JsonResponse
+    {
+        return $this->tableResponse(
+            $request,
+            'roles.editor.decisions',
+            'roles.editor.partials.decision-table-rows',
+            $this->editorService->getAwaitingDecision($request->only(self::FILTER_KEYS))
+        );
+    }
+
+    public function decisionDetail(Manuscript $manuscript): JsonResponse
+    {
+        abort_unless($manuscript->status === 'menunggu_keputusan', 404);
+
+        $manuscript->load(['author', 'researchField']);
+
+        $reviews = $manuscript->reviews()
+            ->whereNull('superseded_at')
+            ->where('status', 'selesai')
+            ->with('reviewer')
+            ->get();
+
+        return response()->json([
+            'manuscript'     => ManuscriptSummaryResource::make($manuscript)->resolve(),
+            'reviews'        => ReviewResource::collection($reviews)->resolve(),
+            'recommendation' => $manuscript->isRevision() ? $this->editorService->getBestReviewer($manuscript) : null,
+            'reviewers'      => $manuscript->isRevision() ? $this->editorService->getAssignableReviewers() : [],
+            'default_due_at' => $this->editorService->defaultDueDate(),
+        ]);
+    }
+
+    /** Revisi mayor: kirim naskah revisi kembali ke reviewer. */
+    public function requestReReview(ReReviewRequest $request, Manuscript $manuscript): JsonResponse
+    {
+        return $this->perform(
+            fn () => $this->editorService->requestReReview(
+                $manuscript,
+                (int) $request->validated('reviewer_id'),
+                $request->validated('editor_note'),
+                $request->user()->id,
+                $request->validated('due_at'),
+            ),
+            'Naskah dikirim untuk review ulang.'
+        );
+    }
+
+    public function storeDecision(EditorialDecisionRequest $request, Manuscript $manuscript): JsonResponse
+    {
+        $decision = $request->validated('decision');
+
+        return $this->perform(
+            fn () => $this->editorService->recordEditorialDecision(
+                $manuscript,
+                $decision,
+                $request->validated('editorial_note'),
+            ),
+            'Keputusan editorial berhasil disimpan (' . Manuscript::STATUSES[Manuscript::DECISION_STATUS[$decision]] . ').'
+        );
     }
 }
