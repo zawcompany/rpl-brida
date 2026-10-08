@@ -131,13 +131,13 @@
                 MANAJEMEN NASKAH
             </p>
             <div class="space-y-1">
-                <a href="#" class="flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors" :class="!sidebarOpen && 'justify-center px-0'" title="Ajukan Naskah Baru">
+                <a href="{{ route('author.manuscripts.create') }}" class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors {{ request()->routeIs('author.manuscripts.create') ? 'bg-red-50 text-red-700 font-medium' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}" :class="!sidebarOpen && 'justify-center px-0'" title="Naskah Baru">
                     <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                     </svg>
-                    <span x-show="sidebarOpen" class="truncate">Ajukan Naskah Baru</span>
+                    <span x-show="sidebarOpen" class="truncate">Naskah Baru</span>
                 </a>
-                <a href="#" class="flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors" :class="!sidebarOpen && 'justify-center px-0'" title="Naskah Saya">
+                <a href="{{ route('author.manuscripts.index') }}" class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors {{ request()->routeIs('author.manuscripts.index') ? 'bg-red-50 text-red-700 font-medium' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}" :class="!sidebarOpen && 'justify-center px-0'" title="Naskah Saya">
                     <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                     </svg>
@@ -152,7 +152,7 @@
                 INTERAKSI
             </p>
             <div class="space-y-1">
-                <a href="#" class="flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors" :class="!sidebarOpen && 'justify-center px-0'" title="Hasil Review & Revisi">
+                <a href="{{ route('author.revisions.index') }}" class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors {{ request()->routeIs('author.revisions.*') ? 'bg-red-50 text-red-700 font-medium' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}" :class="!sidebarOpen && 'justify-center px-0'" title="Hasil Review & Revisi">
                     <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                     </svg>

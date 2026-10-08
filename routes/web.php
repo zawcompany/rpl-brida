@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\AuthorController;
 use App\Http\Controllers\EditorController;
 use App\Http\Controllers\IssueController;
 use App\Http\Controllers\ReviewerDirectoryController;
@@ -34,6 +35,11 @@ Route::get('/dashboard', function () {
     // Editor diarahkan ke EditorController@dashboard (data dinamis)
     if (auth()->user()->role === 'Editor') {
         return app(EditorController::class)->dashboard();
+    }
+
+    // Author diarahkan ke AuthorController@dashboard (statistik & naskah terbaru)
+    if (auth()->user()->role === 'Author') {
+        return app(AuthorController::class)->dashboard(request());
     }
 
     $role = auth()->user()->role;
@@ -82,7 +88,29 @@ Route::middleware(['auth', 'role:editor'])->prefix('editor')->name('editor.')->g
     Route::get('/reviewer/{user}/profil', [ReviewerDirectoryController::class, 'profile'])->name('reviewers.profile');
 });
 
-// 6. Dev-mode shortcut (hapus di production)
+// ============================================================================
+// 6. AUTHOR MODULE — dilindungi auth + role:author
+// ============================================================================
+Route::middleware(['auth', 'role:author'])->prefix('author')->as('author.')->group(function () {
+
+    Route::get('/dashboard', [AuthorController::class, 'dashboard'])->name('dashboard');
+
+    // Naskah Baru (form pengajuan)
+    Route::get('/naskah-baru', [AuthorController::class, 'create'])->name('manuscripts.create');
+    Route::post('/naskah-baru', [AuthorController::class, 'store'])->name('manuscripts.store');
+
+    // Naskah Saya (tabel AJAX + modal tracking + unduh berkas)
+    Route::get('/naskah-saya', [AuthorController::class, 'index'])->name('manuscripts.index');
+    Route::get('/naskah/{manuscript}/detail', [AuthorController::class, 'show'])->name('manuscripts.show');
+    Route::get('/naskah/{manuscript}/unduh/{type}', [AuthorController::class, 'download'])->name('manuscripts.download');
+
+    // Hasil Review & Revisi
+    Route::get('/revisi', [AuthorController::class, 'revisions'])->name('revisions.index');
+    Route::get('/revisi/{manuscript}/detail', [AuthorController::class, 'revisionDetail'])->name('revisions.detail');
+    Route::post('/revisi/{manuscript}', [AuthorController::class, 'uploadRevision'])->name('revisions.upload');
+});
+
+// 7. Dev-mode shortcut (hapus di production)
 Route::get('/dev-login/{role}', function (string $role) {
     $allowed = ['Administrator', 'Editor', 'Author', 'Reviewer'];
     abort_unless(in_array($role, $allowed), 404);

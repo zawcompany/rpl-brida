@@ -25,6 +25,9 @@ class Manuscript extends Model
         'decided_at',
         'revision_file_path',
         'revision_original_name',
+        'author_response',
+        'revision_submitted_at',
+        'co_authors',
         'final_file_path',
         'final_original_name',
         'issue_id',
@@ -35,6 +38,8 @@ class Manuscript extends Model
         'submitted_at' => 'datetime',
         'decided_at'   => 'datetime',
         'published_at' => 'datetime',
+        'revision_submitted_at' => 'datetime',
+        'co_authors'   => 'array',
     ];
 
     /** Semua nilai status yang valid — single source of truth. */
