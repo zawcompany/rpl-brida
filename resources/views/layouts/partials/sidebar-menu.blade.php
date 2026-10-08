@@ -54,7 +54,7 @@
                 PENGELOLAAN NASKAH
             </p>
             <div class="space-y-1">
-                <a href="#" class="flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors" :class="!sidebarOpen && 'justify-center px-0'" title="Naskah Baru">
+                <a href="{{ route('editor.manuscripts.new') }}" class="flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors {{ request()->routeIs('editor.manuscripts.new') ? 'bg-red-50 text-red-700 font-medium' : '' }}" :class="!sidebarOpen && 'justify-center px-0'" title="Naskah Baru">
                     <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
                     </svg>
@@ -74,6 +74,7 @@
                 </a>
             </div>
         </div>
+
 
         <!-- KELOMPOK: PUBLIKASI -->
         <div>
