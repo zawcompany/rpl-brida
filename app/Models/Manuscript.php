@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\Storage;
 
 class Manuscript extends Model
 {
@@ -18,11 +20,21 @@ class Manuscript extends Model
         'file_original_name',
         'status',
         'editor_note',
+        'editorial_note',
         'submitted_at',
+        'decided_at',
+        'revision_file_path',
+        'revision_original_name',
+        'final_file_path',
+        'final_original_name',
+        'issue_id',
+        'published_at',
     ];
 
     protected $casts = [
         'submitted_at' => 'datetime',
+        'decided_at'   => 'datetime',
+        'published_at' => 'datetime',
     ];
 
     /** Semua nilai status yang valid — single source of truth. */
@@ -31,6 +43,7 @@ class Manuscript extends Model
         'pemeriksaan_awal'     => 'Pemeriksaan Awal',
         'ditinjau'             => 'Sedang Ditinjau',
         'menunggu_keputusan'   => 'Menunggu Keputusan',
+        'revisi'               => 'Perlu Revisi',
         'disetujui'            => 'Disetujui',
         'ditolak'              => 'Ditolak',
         'diterbitkan'          => 'Diterbitkan',
@@ -38,6 +51,16 @@ class Manuscript extends Model
 
     /** Status yang termasuk "Naskah Baru" (inbox editor). */
     public const NEW_STATUSES = ['pending', 'pemeriksaan_awal'];
+
+    /** Status yang tampil di menu Peninjauan Naskah. */
+    public const REVIEW_STATUSES = ['ditinjau', 'menunggu_keputusan'];
+
+    /** Keputusan editorial akhir -> status naskah. */
+    public const DECISION_STATUS = [
+        'diterima' => 'disetujui',
+        'revisi'   => 'revisi',
+        'ditolak'  => 'ditolak',
+    ];
 
     // -------------------------------------------------------------------------
     // Relasi
@@ -53,18 +76,24 @@ class Manuscript extends Model
         return $this->belongsTo(ResearchField::class);
     }
 
+    public function issue(): BelongsTo
+    {
+        return $this->belongsTo(Issue::class);
+    }
+
     public function reviews(): HasMany
     {
         return $this->hasMany(Review::class);
     }
 
-    public function activeReview(): HasMany
+    /** Penugasan review terkini (yang belum digantikan reviewer lain). */
+    public function currentReview(): HasOne
     {
-        return $this->hasMany(Review::class)->whereIn('status', ['ditugaskan', 'diterima']);
+        return $this->hasOne(Review::class)->whereNull('superseded_at')->latestOfMany();
     }
 
     // -------------------------------------------------------------------------
-    // Helpers
+    // Accessor
     // -------------------------------------------------------------------------
 
     public function getStatusLabelAttribute(): string
@@ -79,10 +108,43 @@ class Manuscript extends Model
             'pending', 'pemeriksaan_awal' => 'bg-yellow-100 text-yellow-800',
             'ditinjau'                    => 'bg-blue-100 text-blue-800',
             'menunggu_keputusan'          => 'bg-purple-100 text-purple-800',
+            'revisi'                      => 'bg-orange-100 text-orange-800',
             'disetujui'                   => 'bg-green-100 text-green-800',
             'ditolak'                     => 'bg-red-100 text-red-800',
             'diterbitkan'                 => 'bg-gray-100 text-gray-800',
             default                       => 'bg-gray-100 text-gray-700',
         };
+    }
+
+    /** Naskah ini adalah hasil revisi yang dikirim ulang author. */
+    public function isRevision(): bool
+    {
+        return $this->revision_file_path !== null;
+    }
+
+    /** Berkas yang dirapikan editor: revisi terbaru bila ada, kalau tidak berkas asli. */
+    public function getSourceFileUrlAttribute(): ?string
+    {
+        return $this->revision_file_url ?? $this->file_url;
+    }
+
+    public function getFileUrlAttribute(): ?string
+    {
+        return $this->publicUrl($this->file_path);
+    }
+
+    public function getRevisionFileUrlAttribute(): ?string
+    {
+        return $this->publicUrl($this->revision_file_path);
+    }
+
+    public function getFinalFileUrlAttribute(): ?string
+    {
+        return $this->publicUrl($this->final_file_path);
+    }
+
+    private function publicUrl(?string $path): ?string
+    {
+        return $path ? Storage::disk('public')->url($path) : null;
     }
 }

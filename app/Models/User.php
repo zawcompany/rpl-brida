@@ -5,6 +5,7 @@ namespace App\Models;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -57,6 +58,14 @@ class User extends Authenticatable
     // Helper
     // -------------------------------------------------------------------------
 
+    /** Batas beban aktif; di atas ini reviewer dianggap "Sibuk". */
+    public const MAX_ACTIVE_REVIEWS = 3;
+
+    public function scopeReviewers(Builder $query): Builder
+    {
+        return $query->where('role', 'Reviewer');
+    }
+
     public function isRole(string $role): bool
     {
         return $this->role === $role;
@@ -65,6 +74,6 @@ class User extends Authenticatable
     /** Jumlah naskah aktif yang sedang di-review oleh user ini. */
     public function activeReviewCount(): int
     {
-        return $this->reviews()->whereIn('status', ['ditugaskan', 'diterima'])->count();
+        return $this->reviews()->active()->count();
     }
 }

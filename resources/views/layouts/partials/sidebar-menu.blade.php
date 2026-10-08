@@ -54,19 +54,19 @@
                 PENGELOLAAN NASKAH
             </p>
             <div class="space-y-1">
-                <a href="{{ route('editor.manuscripts.new') }}" class="flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors {{ request()->routeIs('editor.manuscripts.new') ? 'bg-red-50 text-red-700 font-medium' : '' }}" :class="!sidebarOpen && 'justify-center px-0'" title="Naskah Baru">
+                <a href="{{ route('editor.manuscripts.new') }}" class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors {{ request()->routeIs('editor.manuscripts.*') ? 'bg-red-50 text-red-700 font-medium' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}" :class="!sidebarOpen && 'justify-center px-0'" title="Naskah Baru">
                     <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
                     </svg>
                     <span x-show="sidebarOpen" class="truncate">Naskah Baru</span>
                 </a>
-                <a href="#" class="flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors" :class="!sidebarOpen && 'justify-center px-0'" title="Peninjauan Naskah">
+                <a href="{{ route('editor.reviews.index') }}" class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors {{ request()->routeIs('editor.reviews.*') ? 'bg-red-50 text-red-700 font-medium' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}" :class="!sidebarOpen && 'justify-center px-0'" title="Peninjauan Naskah">
                     <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
                     </svg>
                     <span x-show="sidebarOpen" class="truncate">Peninjauan Naskah</span>
                 </a>
-                <a href="#" class="flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors" :class="!sidebarOpen && 'justify-center px-0'" title="Keputusan Editorial">
+                <a href="{{ route('editor.decisions.index') }}" class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors {{ request()->routeIs('editor.decisions.*') ? 'bg-red-50 text-red-700 font-medium' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}" :class="!sidebarOpen && 'justify-center px-0'" title="Keputusan Editorial">
                     <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                     </svg>
@@ -82,7 +82,7 @@
                 PUBLIKASI
             </p>
             <div class="space-y-1">
-                <a href="#" class="flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors" :class="!sidebarOpen && 'justify-center px-0'" title="Edisi & Publikasi">
+                <a href="{{ route('editor.issues.index') }}" class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors {{ request()->routeIs('editor.issues.*') ? 'bg-red-50 text-red-700 font-medium' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}" :class="!sidebarOpen && 'justify-center px-0'" title="Edisi & Publikasi">
                     <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/>
                     </svg>
@@ -97,7 +97,7 @@
                 DIREKTORI
             </p>
             <div class="space-y-1">
-                <a href="#" class="flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors" :class="!sidebarOpen && 'justify-center px-0'" title="Direktori Reviewer">
+                <a href="{{ route('editor.reviewers.index') }}" class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors {{ request()->routeIs('editor.reviewers.*') ? 'bg-red-50 text-red-700 font-medium' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}" :class="!sidebarOpen && 'justify-center px-0'" title="Direktori Reviewer">
                     <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
                     </svg>

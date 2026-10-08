@@ -2,7 +2,9 @@
 
 namespace Database\Seeders;
 
+use App\Models\Issue;
 use App\Models\Manuscript;
+use App\Models\Review;
 use App\Models\ResearchField;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -83,8 +85,11 @@ class DatabaseSeeder extends Seeder
             ['title' => 'Optimasi Query Database NoSQL untuk Aplikasi Real-time',     'status' => 'pending',           'field_idx' => 2],
         ];
 
+        $editor = User::where('email', 'editor@example.com')->first();
+        $saved  = [];
+
         foreach ($manuscripts as $ms) {
-            Manuscript::updateOrCreate(
+            $saved[$ms['status']][] = Manuscript::updateOrCreate(
                 ['title' => $ms['title']],
                 [
                     'author_id'          => $author->id,
@@ -96,5 +101,33 @@ class DatabaseSeeder extends Seeder
                 ]
             );
         }
+
+        // ------------------------------------------------------------------
+        // 5. Penugasan review (agar menu Peninjauan & Keputusan punya data)
+        // ------------------------------------------------------------------
+        Review::firstOrCreate(
+            ['manuscript_id' => $saved['ditinjau'][0]->id, 'reviewer_id' => $reviewer1->id],
+            ['assigned_by' => $editor->id, 'status' => 'diterima', 'due_at' => now()->addDays(10)]
+        );
+
+        Review::firstOrCreate(
+            ['manuscript_id' => $saved['menunggu_keputusan'][0]->id, 'reviewer_id' => $reviewer3->id],
+            [
+                'assigned_by'    => $editor->id,
+                'status'         => 'selesai',
+                'recommendation' => 'revisi_minor',
+                'comments'       => 'Metodologi sudah baik. Mohon perjelas bagian analisis hasil dan tambahkan referensi terbaru.',
+                'due_at'         => now()->subDays(2),
+                'completed_at'   => now()->subDays(3),
+            ]
+        );
+
+        // ------------------------------------------------------------------
+        // 6. Edisi jurnal (draft)
+        // ------------------------------------------------------------------
+        Issue::firstOrCreate(
+            ['volume' => 1, 'number' => 1, 'year' => (int) now()->year],
+            ['title' => 'Edisi Perdana', 'status' => Issue::DRAFT]
+        );
     }
 }

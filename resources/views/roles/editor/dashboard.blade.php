@@ -108,8 +108,10 @@
                             @case('pemeriksaan_awal') Pemeriksaan awal @break
                             @case('ditinjau') Ditugaskan ke reviewer @break
                             @case('menunggu_keputusan') Review selesai @break
+                            @case('revisi') Diminta revisi @break
                             @case('disetujui') Disetujui editor @break
                             @case('ditolak') Ditolak @break
+                            @case('diterbitkan') Diterbitkan @break
                             @default {{ $manuscript->status }}
                         @endswitch
                     </td>
@@ -122,7 +124,7 @@
                     <td class="px-6 py-4">
                         @if(in_array($manuscript->status, ['pending', 'pemeriksaan_awal']))
                         <button type="button"
-                                onclick="openManuscriptModal({{ $manuscript->id }})"
+                                onclick="openEditorModal('manuscript', {{ $manuscript->id }})"
                                 class="text-xs font-medium text-red-600 hover:text-red-700 hover:underline transition-colors">
                             Lihat Detail
                         </button>
@@ -147,12 +149,3 @@
 @include('roles.editor.partials.manuscript-modal')
 
 @endsection
-
-@push('scripts')
-<script>
-    // Fungsi global untuk membuka modal dari dashboard maupun halaman naskah baru
-    window.openManuscriptModal = function(manuscriptId) {
-        window.dispatchEvent(new CustomEvent('open-manuscript-modal', { detail: { id: manuscriptId } }));
-    };
-</script>
-@endpush

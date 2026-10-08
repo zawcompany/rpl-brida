@@ -16,7 +16,10 @@ class EnsureRole
     {
         $user = $request->user();
 
-        if (! $user || ! in_array($user->role, $roles)) {
+        // Perbandingan case-insensitive: 'role:editor' cocok dengan role 'Editor' di database.
+        $allowed = array_map('strtolower', $roles);
+
+        if (! $user || ! in_array(strtolower((string) $user->role), $allowed, true)) {
             abort(403, 'Akses ditolak. Anda tidak memiliki izin untuk halaman ini.');
         }
 
