@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AuthorController;
 use App\Http\Controllers\EditorController;
@@ -35,6 +36,11 @@ Route::get('/dashboard', function () {
     // Editor diarahkan ke EditorController@dashboard (data dinamis)
     if (auth()->user()->role === 'Editor') {
         return app(EditorController::class)->dashboard();
+    }
+
+    // Administrator diarahkan ke AdminController@dashboard (statistik & audit log)
+    if (auth()->user()->role === 'Administrator') {
+        return app(AdminController::class)->dashboard();
     }
 
     // Author diarahkan ke AuthorController@dashboard (statistik & naskah terbaru)
@@ -108,6 +114,30 @@ Route::middleware(['auth', 'role:author'])->prefix('author')->as('author.')->gro
     Route::get('/revisi', [AuthorController::class, 'revisions'])->name('revisions.index');
     Route::get('/revisi/{manuscript}/detail', [AuthorController::class, 'revisionDetail'])->name('revisions.detail');
     Route::post('/revisi/{manuscript}', [AuthorController::class, 'uploadRevision'])->name('revisions.upload');
+});
+
+// ============================================================================
+// 8. ADMIN MODULE — dilindungi auth + role:admin (alias role 'Administrator')
+// ============================================================================
+Route::middleware(['auth', 'role:admin'])->prefix('admin')->as('admin.')->group(function () {
+
+    Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
+
+    // Kelola Pengguna (UC-03)
+    Route::get('/pengguna', [AdminController::class, 'users'])->name('users.index');
+    Route::post('/pengguna', [AdminController::class, 'storeUser'])->name('users.store');
+    Route::get('/pengguna/{user}', [AdminController::class, 'showUser'])->name('users.show');
+    Route::put('/pengguna/{user}', [AdminController::class, 'updateUser'])->name('users.update');
+    Route::patch('/pengguna/{user}/status', [AdminController::class, 'toggleStatus'])->name('users.status');
+    Route::post('/pengguna/{user}/reset-password', [AdminController::class, 'resetPassword'])->name('users.reset');
+
+    // Role & Hak Akses (UC-04)
+    Route::get('/role', [AdminController::class, 'roles'])->name('roles.index');
+    Route::patch('/pengguna/{user}/role', [AdminController::class, 'updateRole'])->name('users.role');
+
+    // Profil Admin (UC-05)
+    Route::get('/profil', [AdminController::class, 'profile'])->name('profile.edit');
+    Route::put('/profil', [AdminController::class, 'updateProfile'])->name('profile.update');
 });
 
 // 7. Dev-mode shortcut (hapus di production)
