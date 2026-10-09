@@ -38,6 +38,7 @@
 
     <form method="POST"
           action="{{ $editingIssue ? route('editor.issues.update', $editingIssue) : route('editor.issues.store') }}"
+          enctype="multipart/form-data"
           class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 px-6 py-5 border-b border-gray-100">
         @csrf
         @if ($editingIssue) @method('PUT') @endif
@@ -57,6 +58,22 @@
         <div class="sm:col-span-2 lg:col-span-2">
             <label class="{{ $label }}" for="i-title">Judul Edisi <span class="font-normal text-gray-400">(opsional)</span></label>
             <input id="i-title" type="text" name="title" maxlength="255" value="{{ old('title', $editingIssue?->title) }}" class="{{ $input }}">
+        </div>
+        <div class="sm:col-span-2 lg:col-span-5 flex items-center gap-4">
+            @if ($editingIssue)
+                <img src="{{ $editingIssue->cover_url }}" alt="Sampul saat ini" class="h-24 w-[4.5rem] flex-shrink-0 rounded-lg border border-gray-200 object-cover">
+            @endif
+            <div class="flex-1">
+                <label class="{{ $label }}" for="i-cover">
+                    Gambar Sampul <span class="font-normal text-gray-400">(opsional)</span>
+                </label>
+                <input id="i-cover" type="file" name="cover_image" accept="image/jpeg,image/png,image/webp"
+                       class="block w-full text-sm text-gray-600 file:mr-3 file:px-3 file:py-2 file:rounded-lg file:border-0 file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200">
+                <p class="text-xs text-gray-400 mt-1">
+                    JPG, PNG, atau WebP, maksimal 2 MB.{{ $editingIssue?->cover_image ? ' Pilih berkas baru untuk mengganti sampul saat ini.' : '' }}
+                </p>
+                @error('cover_image') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
+            </div>
         </div>
         <div class="sm:col-span-2 lg:col-span-5 flex items-center gap-3">
             <button type="submit" class="px-5 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors">

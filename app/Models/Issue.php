@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Files\CoverImageStore;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -11,7 +12,7 @@ class Issue extends Model
     public const DRAFT     = 'draft';
     public const PUBLISHED = 'published';
 
-    protected $fillable = ['volume', 'number', 'year', 'title', 'status', 'published_at'];
+    protected $fillable = ['volume', 'number', 'year', 'title', 'cover_image', 'status', 'published_at'];
 
     protected $casts = [
         'published_at' => 'datetime',
@@ -35,6 +36,12 @@ class Issue extends Model
     public function isPublished(): bool
     {
         return $this->status === self::PUBLISHED;
+    }
+
+    /** URL sampul (atau placeholder bawaan bila belum diunggah). */
+    public function getCoverUrlAttribute(): string
+    {
+        return app(CoverImageStore::class)->url($this->cover_image);
     }
 
     /** Label ringkas, mis. "Vol. 2 No. 1 (2026)". */

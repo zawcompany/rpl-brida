@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 400" role="img" aria-label="Sampul belum tersedia">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f3f4f6"/>
+      <stop offset="1" stop-color="#e5e7eb"/>
+    </linearGradient>
+  </defs>
+  <rect width="300" height="400" fill="url(#g)"/>
+  <rect x="0" y="0" width="300" height="10" fill="#dc2626"/>
+  <rect x="48" y="96" width="204" height="2" fill="#9ca3af"/>
+  <text x="150" y="190" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="40" font-weight="700" fill="#374151">SIMPIL</text>
+  <text x="150" y="222" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#6b7280">BRIDA Kota Makassar</text>
+  <rect x="48" y="258" width="204" height="2" fill="#9ca3af"/>
+  <text x="150" y="340" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="12" fill="#9ca3af">Sampul belum tersedia</text>
+</svg>

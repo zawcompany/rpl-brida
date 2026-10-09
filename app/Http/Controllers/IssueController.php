@@ -43,7 +43,7 @@ class IssueController extends Controller
 
     public function store(IssueRequest $request): RedirectResponse
     {
-        $issue = $this->issueService->createIssue($request->validated());
+        $issue = $this->issueService->createIssue($request->safe()->except('cover_image'), $request->file('cover_image'));
 
         return redirect()->route('editor.issues.index', ['issue' => $issue->id])
             ->with('success', "Edisi {$issue->label} berhasil dibuat.");
@@ -52,7 +52,7 @@ class IssueController extends Controller
     public function update(IssueRequest $request, Issue $issue): RedirectResponse
     {
         return $this->act(
-            fn () => $this->issueService->updateIssue($issue, $request->validated()),
+            fn () => $this->issueService->updateIssue($issue, $request->safe()->except('cover_image'), $request->file('cover_image')),
             'Edisi berhasil diperbarui.',
             $issue
         );

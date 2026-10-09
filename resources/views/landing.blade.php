@@ -79,6 +79,16 @@
 {{-- TERBITAN TERBARU --}}
 <x-public.section id="terbitan" tone="white" title="Terbitan Terbaru"
     :subtitle="$current ? $current->label . ($current->title ? ' — ' . $current->title : '') : 'Edisi terbaru yang telah diterbitkan.'">
+    @if ($current)
+        <div class="mb-8 flex items-center gap-4">
+            <x-public.issue-cover :issue="$current" class="h-40 w-30 flex-shrink-0 rounded-lg border border-gray-200 bg-gray-100 object-cover shadow-sm" />
+            <div>
+                <p class="text-lg font-bold text-gray-900">{{ $current->label }}</p>
+                @if ($current->title)<p class="text-sm text-gray-500">{{ $current->title }}</p>@endif
+            </div>
+        </div>
+    @endif
+
     @if ($current && $current->manuscripts->isNotEmpty())
         <div class="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
             @foreach ($current->manuscripts as $article)
@@ -101,10 +111,13 @@
     @if ($archive->isNotEmpty())
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             @foreach ($archive as $issue)
-                <a href="{{ route('archives.show', $issue) }}" class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition hover:shadow-md">
-                    <p class="font-semibold text-gray-900">{{ $issue->label }}</p>
-                    @if ($issue->title)<p class="mt-0.5 text-sm text-gray-500">{{ $issue->title }}</p>@endif
-                    <p class="mt-3 text-xs font-medium text-red-600">{{ $issue->articles_count }} artikel →</p>
+                <a href="{{ route('archives.show', $issue) }}" class="flex gap-4 rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition hover:shadow-md">
+                    <x-public.issue-cover :issue="$issue" />
+                    <div>
+                        <p class="font-semibold text-gray-900">{{ $issue->label }}</p>
+                        @if ($issue->title)<p class="mt-0.5 text-sm text-gray-500">{{ $issue->title }}</p>@endif
+                        <p class="mt-3 text-xs font-medium text-red-600">{{ $issue->articles_count }} artikel →</p>
+                    </div>
                 </a>
             @endforeach
         </div>

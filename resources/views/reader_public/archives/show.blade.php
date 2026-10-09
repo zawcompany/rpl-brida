@@ -4,6 +4,7 @@
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10">
     <div class="mb-8 flex items-start gap-3">
         <a href="{{ route('archives.index') }}" class="mt-1 text-2xl leading-none text-gray-900 hover:text-gray-500" aria-label="Kembali ke arsip">←</a>
+        <x-public.issue-cover :issue="$issue" />
         <div>
             <h2 class="text-2xl font-bold text-gray-900 sm:text-3xl">{{ $issue->label }}</h2>
             @if ($issue->title)<p class="mt-1 text-gray-500">{{ $issue->title }}</p>@endif

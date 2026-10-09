@@ -15,6 +15,15 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Disk gambar sampul edisi (aset PUBLIK untuk beranda/arsip)
+    |--------------------------------------------------------------------------
+    | public : storage/app/public (jalankan `php artisan storage:link`)
+    | s3     : bucket S3 dengan akses baca publik / CDN
+    */
+    'cover_disk' => env('COVER_DISK', 'public'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Identitas jurnal (dipakai pada kutipan artikel)
     |--------------------------------------------------------------------------
     */
@@ -40,6 +49,7 @@ return [
     'upload' => [
         'manuscript_kb' => 10240, // 10 MB — naskah & revisi (SRS NF-01)
         'final_kb'      => 20480, // 20 MB — PDF final layout
+        'cover_kb'      => 2048,  // 2 MB  — gambar sampul edisi
     ],
 
     /*

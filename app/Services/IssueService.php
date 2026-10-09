@@ -4,9 +4,11 @@ namespace App\Services;
 
 use App\Models\Issue;
 use App\Models\Manuscript;
+use App\Services\Files\CoverImageStore;
 use App\Services\Files\ManuscriptFileStore;
 use DomainException;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -18,6 +20,7 @@ class IssueService
 {
     public function __construct(
         private readonly ManuscriptFileStore $files,
+        private readonly CoverImageStore $covers,
         private readonly NotificationService $notifier,
     ) {
     }
@@ -34,16 +37,45 @@ class IssueService
             ->get();
     }
 
-    public function createIssue(array $data): Issue
+    public function createIssue(array $data, ?UploadedFile $cover = null): Issue
     {
+        $data = Arr::except($data, 'cover_image');
+
+        if ($cover) {
+            $data['cover_image'] = $this->covers->put($cover);
+        }
+
         return Issue::create($data + ['status' => Issue::DRAFT]);
     }
 
-    /** @throws DomainException */
-    public function updateIssue(Issue $issue, array $data): Issue
+    /**
+     * Sampul baru menggantikan yang lama; berkas lama dihapus setelah database berhasil diperbarui.
+     *
+     * @throws DomainException
+     */
+    public function updateIssue(Issue $issue, array $data, ?UploadedFile $cover = null): Issue
     {
         $this->ensureDraft($issue);
-        $issue->update($data);
+
+        $data = Arr::except($data, 'cover_image');
+        $oldCover = $issue->cover_image;
+
+        if ($cover) {
+            $data['cover_image'] = $this->covers->put($cover);
+        }
+
+        try {
+            $issue->update($data);
+        } catch (\Throwable $e) {
+            if ($cover) {
+                $this->covers->delete($data['cover_image']); // jangan tinggalkan berkas yatim
+            }
+            throw $e;
+        }
+
+        if ($cover) {
+            $this->covers->delete($oldCover);
+        }
 
         return $issue;
     }
@@ -58,6 +90,7 @@ class IssueService
         }
 
         $issue->delete();
+        $this->covers->delete($issue->cover_image);
     }
 
     // -------------------------------------------------------------------------
