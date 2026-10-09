@@ -13,11 +13,12 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
+use Tests\Concerns\MakesDocuments;
 use Tests\TestCase;
 
 class EditorModuleTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, MakesDocuments;
 
     private User $editor;
     private User $author;
@@ -314,7 +315,7 @@ class EditorModuleTest extends TestCase
 
     public function test_alur_edisi_dari_pembuatan_hingga_publikasi(): void
     {
-        Storage::fake('public');
+        Storage::fake('local');
         $this->actingAs($this->editor);
 
         $this->post('/editor/edisi', ['volume' => 1, 'number' => 2, 'year' => 2026, 'title' => 'Edisi Khusus'])
@@ -331,7 +332,7 @@ class EditorModuleTest extends TestCase
         // naskah belum disetujui tidak boleh ditambahkan
         $this->post("/editor/edisi/{$issue->id}/naskah", [
             'manuscript_id' => $pending->id,
-            'final_file'    => UploadedFile::fake()->create('final.pdf', 100, 'application/pdf'),
+            'final_file'    => $this->pdf('final.pdf'),
         ])->assertSessionHas('error');
         $this->assertNull($pending->fresh()->issue_id);
 
@@ -347,12 +348,12 @@ class EditorModuleTest extends TestCase
 
         $this->post("/editor/edisi/{$issue->id}/naskah", [
             'manuscript_id' => $approved->id,
-            'final_file'    => UploadedFile::fake()->create('final.pdf', 100, 'application/pdf'),
+            'final_file'    => $this->pdf('final.pdf'),
         ])->assertSessionHas('success');
 
         $approved->refresh();
         $this->assertSame($issue->id, $approved->issue_id);
-        Storage::disk('public')->assertExists($approved->final_file_path);
+        Storage::disk('local')->assertExists($approved->final_file_path);
 
         $this->post("/editor/edisi/{$issue->id}/publikasi")->assertSessionHas('success');
 

@@ -10,11 +10,12 @@ use App\Services\AuthorService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Tests\Concerns\MakesDocuments;
 use Tests\TestCase;
 
 class AuthorModuleTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, MakesDocuments;
 
     private User $author;
     private ResearchField $field;
@@ -22,7 +23,7 @@ class AuthorModuleTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        Storage::fake('public');
+        Storage::fake('local');
 
         $this->author = $this->makeUser('Author');
         $this->field = ResearchField::create(['name' => 'Ilmu Komputer', 'slug' => 'ilmu-komputer']);
@@ -52,7 +53,7 @@ class AuthorModuleTest extends TestCase
             'title' => 'Judul Baru', 'research_field_id' => $this->field->id,
             'abstract' => 'Abstrak lengkap.', 'keywords' => 'riset, brida',
             'co_authors' => [['name' => 'Budi', 'email' => 'budi@x.test'], ['name' => '', 'email' => '']],
-            'file' => UploadedFile::fake()->create('naskah.pdf', 500, 'application/pdf'),
+            'file' => $this->pdf(),
         ];
     }
 
@@ -118,7 +119,7 @@ class AuthorModuleTest extends TestCase
         $this->assertNotNull($m->submitted_at);
         $this->assertCount(1, $m->co_authors); // baris kosong dibuang
         $this->assertSame('Budi', $m->co_authors[0]['name']);
-        Storage::disk('public')->assertExists($m->file_path);
+        Storage::disk('local')->assertExists($m->file_path);
     }
 
     public function test_submit_validation(): void
@@ -185,15 +186,15 @@ class AuthorModuleTest extends TestCase
         $this->assertSame(['done', 'done', 'skipped', 'done', 'done'], $published->values()->all());
     }
 
-    public function test_download_requires_ownership(): void
+    public function test_file_route_requires_ownership_and_uses_private_disk(): void
     {
-        Storage::disk('public')->put('manuscripts/x.pdf', 'isi');
+        Storage::disk('local')->put('manuscripts/x.pdf', 'isi');
         $m = $this->makeManuscript('pending');
 
-        $this->actingAs($this->author)->get(route('author.manuscripts.download', [$m, 'original']))->assertOk();
-        $this->actingAs($this->author)->get(route('author.manuscripts.download', [$m, 'revision']))->assertNotFound();
+        $this->actingAs($this->author)->get(route('files.manuscript', [$m, 'original']))->assertOk();
+        $this->actingAs($this->author)->get(route('files.manuscript', [$m, 'revision']))->assertNotFound();
         $this->actingAs($this->makeUser('Author', 'o@t.test'))
-            ->get(route('author.manuscripts.download', [$m, 'original']))->assertForbidden();
+            ->get(route('files.manuscript', [$m, 'original']))->assertForbidden();
     }
 
     // ---------------------------------------------------------------- Hasil Review & Revisi
@@ -234,7 +235,7 @@ class AuthorModuleTest extends TestCase
         $m = $this->makeManuscript('revisi');
 
         $this->actingAs($this->author)->postJson(route('author.revisions.upload', $m), [
-            'revision_file' => UploadedFile::fake()->create('revisi.docx', 300),
+            'revision_file' => $this->docx('revisi.docx'),
             'author_response' => 'Metodologi sudah diperjelas pada bab 3.',
         ])->assertOk()->assertJson(['success' => true]);
 
@@ -243,7 +244,7 @@ class AuthorModuleTest extends TestCase
         $this->assertTrue($m->isRevision());
         $this->assertSame('Metodologi sudah diperjelas pada bab 3.', $m->author_response);
         $this->assertNotNull($m->revision_submitted_at);
-        Storage::disk('public')->assertExists($m->revision_file_path);
+        Storage::disk('local')->assertExists($m->revision_file_path);
 
         // muncul di antrean Keputusan Editorial milik editor
         $this->actingAs($this->makeUser('Editor'))
@@ -255,14 +256,14 @@ class AuthorModuleTest extends TestCase
         $m = $this->makeManuscript('revisi');
         $svc = app(AuthorService::class);
 
-        $svc->submitRevision($m, UploadedFile::fake()->create('r1.pdf', 10), 'Tanggapan putaran pertama.');
+        $svc->submitRevision($m, $this->pdf('r1.pdf'), 'Tanggapan putaran pertama.');
         $first = $m->fresh()->revision_file_path;
 
         $m->update(['status' => 'revisi']); // editor meminta revisi lagi
-        $svc->submitRevision($m->fresh(), UploadedFile::fake()->create('r2.pdf', 10), 'Tanggapan putaran kedua.');
+        $svc->submitRevision($m->fresh(), $this->pdf('r2.pdf'), 'Tanggapan putaran kedua.');
 
-        Storage::disk('public')->assertMissing($first);
-        Storage::disk('public')->assertExists($m->fresh()->revision_file_path);
+        Storage::disk('local')->assertMissing($first);
+        Storage::disk('local')->assertExists($m->fresh()->revision_file_path);
     }
 
     public function test_upload_revision_validation_and_guards(): void
@@ -279,13 +280,13 @@ class AuthorModuleTest extends TestCase
 
         // bukan pemilik -> 403
         $this->actingAs($this->makeUser('Author', 'o@t.test'))->postJson(route('author.revisions.upload', $m), [
-            'revision_file' => UploadedFile::fake()->create('r.pdf', 10), 'author_response' => 'Sudah diperbaiki semua.',
+            'revision_file' => $this->pdf('r.pdf'), 'author_response' => 'Sudah diperbaiki semua.',
         ])->assertForbidden();
 
         // status bukan 'revisi' -> 422 dari service
         $other = $this->makeManuscript('ditinjau');
         $this->actingAs($this->author)->postJson(route('author.revisions.upload', $other), [
-            'revision_file' => UploadedFile::fake()->create('r.pdf', 10), 'author_response' => 'Sudah diperbaiki semua.',
+            'revision_file' => $this->pdf('r.pdf'), 'author_response' => 'Sudah diperbaiki semua.',
         ])->assertUnprocessable()->assertJson(['success' => false]);
 
         $this->assertSame('revisi', $m->fresh()->status);

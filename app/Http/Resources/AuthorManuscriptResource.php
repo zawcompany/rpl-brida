@@ -22,10 +22,10 @@ class AuthorManuscriptResource extends JsonResource
             'status_label'          => $this->status_label,
             'status_class'          => $this->status_badge_class,
             'file_name'             => $this->file_original_name,
-            'file_url'              => route('author.manuscripts.download', [$this->id, 'original']),
+            'file_url'              => route('files.manuscript', [$this->id, 'original']),
             'revision_name'         => $this->revision_original_name,
             'revision_url'          => $this->revision_file_path
-                ? route('author.manuscripts.download', [$this->id, 'revision'])
+                ? route('files.manuscript', [$this->id, 'revision'])
                 : null,
             'editorial_note'        => $this->editorial_note,
             'decided_at'            => $this->decided_at?->format('d M Y'),

@@ -1,0 +1,15 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: simpil_mysql
+    restart: always
+    environment:
+      MYSQL_DATABASE: simpil_db
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3306:3306"
+    volumes:
+      - dbdata:/var/lib/mysql
+
+volumes:
+  dbdata:

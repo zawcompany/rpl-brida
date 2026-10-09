@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
+use App\Services\Files\ManuscriptFileStore;
 
 /**
  * AuthorService — seluruh logika bisnis sisi author:
@@ -20,11 +20,14 @@ use Illuminate\Support\Facades\Storage;
  */
 class AuthorService
 {
-    private const DISK = 'public';
     private const PER_PAGE_OPTIONS = [10, 25, 50, 100];
 
     /** Status yang dihitung sebagai "Sedang Ditinjau" di widget. */
     public const IN_REVIEW_STATUSES = ['pemeriksaan_awal', 'ditinjau', 'menunggu_keputusan'];
+
+    public function __construct(private readonly ManuscriptFileStore $files)
+    {
+    }
 
     // -------------------------------------------------------------------------
     // Dashboard
@@ -78,7 +81,7 @@ class AuthorService
      */
     public function submit(User $author, array $data, UploadedFile $file): Manuscript
     {
-        $path = $file->store("manuscripts/{$author->id}", self::DISK);
+        $path = $this->files->put($file, "manuscripts/{$author->id}");
 
         return $author->manuscripts()->create([
             'title'              => $data['title'],
@@ -225,7 +228,7 @@ class AuthorService
         }
 
         $oldPath = $manuscript->revision_file_path;
-        $path = $file->store("revisions/{$manuscript->author_id}", self::DISK);
+        $path = $this->files->put($file, "revisions/{$manuscript->author_id}");
 
         try {
             $manuscript->update([
@@ -236,35 +239,12 @@ class AuthorService
                 'status'                 => 'menunggu_keputusan',
             ]);
         } catch (\Throwable $e) {
-            Storage::disk(self::DISK)->delete($path);
+            $this->files->delete($path);
             throw $e;
         }
 
-        if ($oldPath) {
-            Storage::disk(self::DISK)->delete($oldPath); // ganti revisi lama dari putaran sebelumnya
-        }
+        $this->files->delete($oldPath); // ganti revisi lama dari putaran sebelumnya
 
         return $manuscript;
-    }
-
-    // -------------------------------------------------------------------------
-    // Unduhan
-    // -------------------------------------------------------------------------
-
-    /** @return array{path: string, name: string}|null */
-    public function resolveDownload(Manuscript $manuscript, string $type): ?array
-    {
-        [$path, $name] = $type === 'revision'
-            ? [$manuscript->revision_file_path, $manuscript->revision_original_name]
-            : [$manuscript->file_path, $manuscript->file_original_name];
-
-        return $path && Storage::disk(self::DISK)->exists($path)
-            ? ['path' => $path, 'name' => $name ?: basename($path)]
-            : null;
-    }
-
-    public function disk(): \Illuminate\Contracts\Filesystem\Filesystem
-    {
-        return Storage::disk(self::DISK);
     }
 }

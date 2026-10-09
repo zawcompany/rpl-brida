@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Author;
 
+use App\Rules\SafeDocument;
 use Illuminate\Foundation\Http\FormRequest;
 
 class SubmitManuscriptRequest extends FormRequest
@@ -32,7 +33,7 @@ class SubmitManuscriptRequest extends FormRequest
             'co_authors'           => ['nullable', 'array', 'max:10'],
             'co_authors.*.name'    => ['required', 'string', 'max:255'],
             'co_authors.*.email'   => ['nullable', 'email', 'max:255'],
-            'file'                 => ['required', 'file', 'mimes:pdf,docx', 'max:10240'],
+            'file'                 => ['required', 'file', new SafeDocument(['pdf', 'docx']), 'max:' . config('simpil.upload.manuscript_kb')],
         ];
     }
 
@@ -53,7 +54,6 @@ class SubmitManuscriptRequest extends FormRequest
     {
         return [
             'required'    => ':attribute wajib diisi.',
-            'file.mimes'  => 'Berkas naskah harus berformat PDF atau DOCX.',
             'file.max'    => 'Ukuran berkas naskah maksimal 10 MB.',
             'file.uploaded' => 'Berkas gagal diunggah. Pastikan ukurannya tidak melebihi 10 MB.',
             'exists'      => ':attribute tidak valid.',
