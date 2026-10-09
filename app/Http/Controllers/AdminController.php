@@ -4,13 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\RespondsForEditor;
 use App\Http\Requests\Admin\StoreUserRequest;
-use App\Http\Requests\Admin\UpdateProfileRequest;
 use App\Http\Requests\Admin\UpdateRoleRequest;
 use App\Http\Requests\Admin\UpdateUserRequest;
 use App\Models\User;
 use App\Services\AdminService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -115,20 +113,6 @@ class AdminController extends Controller
             fn () => $this->adminService->changeRole($user, $request->validated('role'), $request->user()),
             'Role pengguna berhasil diperbarui.'
         );
-    }
-
-    // ------------------------------------------------------------------ Profil Admin
-
-    public function profile(Request $request): View
-    {
-        return view('roles.admin.profile', ['user' => $request->user()]);
-    }
-
-    public function updateProfile(UpdateProfileRequest $request): RedirectResponse
-    {
-        $this->adminService->updateProfile($request->user(), $request->validated());
-
-        return redirect()->route('admin.profile.edit')->with('success', 'Profil berhasil diperbarui.');
     }
 
     // ------------------------------------------------------------------ helper

@@ -2,86 +2,105 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\RespondsForEditor;
+use App\Http\Requests\Reviewer\DeclineReviewRequest;
+use App\Http\Requests\Reviewer\SubmitReviewRequest;
+use App\Http\Requests\Reviewer\UpdateReviewRequest;
+use App\Http\Resources\ReviewerReviewResource;
 use App\Models\Review;
+use App\Services\ReviewerService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\View\View;
 
+/**
+ * Controller tipis modul Reviewer: validasi (FormRequest) -> ReviewerService -> respons.
+ * Pola tabel AJAX & penanganan DomainException sama dengan modul Editor/Author.
+ */
 class ReviewerController extends Controller
 {
-    /**
-     * Menampilkan daftar naskah yang ditugaskan
-     * kepada reviewer yang sedang login.
-     */
-    public function index()
+    use RespondsForEditor;
+
+    private const FILTER_KEYS = ['search', 'status', 'per_page'];
+
+    public function __construct(private readonly ReviewerService $reviewerService)
     {
-        $reviews = Review::with(['manuscript.researchField'])
-            ->where('reviewer_id', Auth::id())
-            ->whereNull('superseded_at')
-            ->orderByRaw('due_at IS NULL, due_at ASC')
-            ->get();
-
-        $manuscripts = $reviews->map(function ($review) {
-            $status = match ($review->status) {
-                'ditugaskan' => 'Belum Direview',
-                'diterima' => 'Sedang Direview',
-                'selesai' => 'Selesai Direview',
-                'ditolak_reviewer' => 'Ditolak',
-                default => 'Belum Direview',
-            };
-
-            $action = match ($review->status) {
-                'ditugaskan' => 'Review',
-                'diterima' => 'Lanjut',
-                'selesai' => 'Selesai',
-                'ditolak_reviewer' => 'Ditolak',
-                default => 'Review',
-            };
-
-            return [
-                'id' => $review->id,
-                'no' => $review->id,
-                'title' => $review->manuscript->title ?? 'Naskah tidak ditemukan',
-                'field' => $review->manuscript->researchField->name ?? '-',
-                'deadline' => $review->due_at
-                    ? $review->due_at->format('d/m/Y')
-                    : '-',
-                'status' => $status,
-                'action' => $action,
-            ];
-        });
-
-        return view('roles.reviewer.manuscripts', compact('manuscripts'));
     }
 
-    /**
-     * Menampilkan detail penugasan review.
-     */
-    public function show($id)
-    {
-        $review = Review::with('manuscript')
-            ->where('reviewer_id', Auth::id())
-            ->whereNull('superseded_at')
-            ->findOrFail($id);
+    // ------------------------------------------------------------------ Dashboard
 
-        return view('roles.reviewer.review-detail', compact('review'));
+    public function dashboard(Request $request): View
+    {
+        return view('roles.reviewer.dashboard', [
+            'stats'  => $this->reviewerService->getDashboardStats($request->user()),
+            'recent' => $this->reviewerService->getRecentReviews($request->user()),
+        ]);
     }
 
-    /**
-     * Menampilkan daftar naskah yang sudah selesai direview.
-     */
-    public function completed()
-    {
-        $reviews = Review::with(['manuscript.researchField'])
-            ->where('reviewer_id', Auth::id())
-            ->whereNull('superseded_at')
-            ->where('status', 'selesai')
-            ->orderByDesc('updated_at')
-            ->get();
+    // ------------------------------------------------------------------ Daftar
 
-        return view(
+    /** Naskah Ditugaskan: semua penugasan (filter status). */
+    public function index(Request $request): View|JsonResponse
+    {
+        return $this->tableResponse(
+            $request,
+            'roles.reviewer.manuscripts',
+            'roles.reviewer.partials.assignment-table-rows',
+            $this->reviewerService->paginateAssignments($request->user(), $request->only(self::FILTER_KEYS)),
+            ['statuses' => Review::STATUS_LABELS]
+        );
+    }
+
+    /** Naskah Selesai Direview: hanya penugasan berstatus 'selesai'. */
+    public function completed(Request $request): View|JsonResponse
+    {
+        return $this->tableResponse(
+            $request,
             'roles.reviewer.manuscripts-selesai',
-            compact('reviews')
+            'roles.reviewer.partials.assignment-table-rows',
+            $this->reviewerService->paginateAssignments($request->user(), $request->only(self::FILTER_KEYS), ['selesai'])
+        );
+    }
+
+    // ------------------------------------------------------------------ Detail & aksi
+
+    public function detail(Review $review): JsonResponse
+    {
+        Gate::authorize('view', $review);
+        $review->load(['manuscript.researchField']);
+
+        return response()->json(['review' => ReviewerReviewResource::make($review)->resolve()]);
+    }
+
+    public function accept(Request $request, Review $review): JsonResponse
+    {
+        Gate::authorize('respond', $review);
+
+        return $this->perform(fn () => $this->reviewerService->accept($review), 'Penugasan diterima. Silakan lakukan penilaian.');
+    }
+
+    public function decline(DeclineReviewRequest $request, Review $review): JsonResponse
+    {
+        return $this->perform(
+            fn () => $this->reviewerService->decline($review, $request->validated('reason')),
+            'Penugasan ditolak. Editor akan menugaskan reviewer lain.'
+        );
+    }
+
+    public function submit(SubmitReviewRequest $request, Review $review): JsonResponse
+    {
+        return $this->perform(
+            fn () => $this->reviewerService->submit($review, $request->validated(), $request->file('review_file')),
+            'Review berhasil dikirim ke editor.'
+        );
+    }
+
+    public function update(UpdateReviewRequest $request, Review $review): JsonResponse
+    {
+        return $this->perform(
+            fn () => $this->reviewerService->update($review, $request->validated(), $request->file('review_file')),
+            'Review berhasil diperbarui.'
         );
     }
 }
-

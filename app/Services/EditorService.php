@@ -21,6 +21,10 @@ use Illuminate\Support\Facades\DB;
  */
 class EditorService
 {
+    public function __construct(private readonly NotificationService $notifier)
+    {
+    }
+
     /** Durasi default review (hari) sejak penugasan. */
     public const REVIEW_DURATION_DAYS = 14;
 
@@ -215,6 +219,7 @@ class EditorService
             if ($manuscript->status === 'ditolak') {
                 $manuscript->decided_at = now();
                 $manuscript->save();
+                $this->notifier->initialDecision($manuscript);
 
                 return $manuscript;
             }
@@ -222,6 +227,7 @@ class EditorService
             $manuscript->save();
 
             $this->assignReview($manuscript, $reviewerId, $editorId, $dueAt);
+            $this->notifier->initialDecision($manuscript);
 
             return $manuscript->refresh();
         });
@@ -235,13 +241,17 @@ class EditorService
 
     private function assignReview(Manuscript $manuscript, int $reviewerId, int $editorId, ?string $dueAt = null): Review
     {
-        return Review::create([
+        $review = Review::create([
             'manuscript_id' => $manuscript->id,
             'reviewer_id'   => $reviewerId,
             'assigned_by'   => $editorId,
             'status'        => 'ditugaskan',
             'due_at'        => filled($dueAt) ? Carbon::parse($dueAt)->endOfDay() : now()->addDays(self::REVIEW_DURATION_DAYS),
-        ]);
+        ])->setRelation('manuscript', $manuscript);
+
+        $this->notifier->reviewerAssigned($review);
+
+        return $review;
     }
 
     // -------------------------------------------------------------------------
@@ -327,6 +337,8 @@ class EditorService
             'editorial_note' => $note,
             'decided_at'     => now(),
         ]);
+
+        $this->notifier->editorialDecision($manuscript);
 
         return $manuscript;
     }

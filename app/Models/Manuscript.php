@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -31,6 +32,7 @@ class Manuscript extends Model
         'final_original_name',
         'issue_id',
         'published_at',
+        'doi',
     ];
 
     protected $casts = [
@@ -105,6 +107,21 @@ class Manuscript extends Model
     // -------------------------------------------------------------------------
     // Accessor
     // -------------------------------------------------------------------------
+
+    /** Artikel yang boleh dilihat publik: status 'diterbitkan' pada edisi yang sudah terbit. */
+    public function scopePublished(Builder $query): Builder
+    {
+        return $query->where('status', 'diterbitkan')
+            ->whereHas('issue', fn (Builder $q) => $q->where('status', Issue::PUBLISHED));
+    }
+
+    /** "Penulis Utama, Rekan Satu, Rekan Dua" */
+    public function getAuthorsLabelAttribute(): string
+    {
+        return collect([$this->author?->name])
+            ->merge(collect($this->co_authors ?? [])->pluck('name'))
+            ->filter()->implode(', ') ?: '-';
+    }
 
     public function getStatusLabelAttribute(): string
     {

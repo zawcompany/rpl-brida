@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Manuscript;
+use App\Models\Review;
 use App\Services\Files\ManuscriptFileStore;
 use Illuminate\Support\Facades\Gate;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -35,5 +36,15 @@ class ManuscriptFileController extends Controller
         abort_unless($this->files->exists($path), 404, 'Berkas tidak ditemukan.');
 
         return $this->files->response($path, $manuscript->{$nameColumn} ?: basename($path), inline: true);
+    }
+
+    /** Lampiran catatan review dari reviewer (hanya reviewer pemilik & editor — ReviewPolicy). */
+    public function review(Review $review): StreamedResponse
+    {
+        Gate::authorize('viewFile', $review);
+
+        abort_unless($this->files->exists($review->review_file_path), 404, 'Berkas tidak ditemukan.');
+
+        return $this->files->response($review->review_file_path, $review->review_file_name ?: basename($review->review_file_path), inline: true);
     }
 }

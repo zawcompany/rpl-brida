@@ -184,23 +184,6 @@ class AdminService
     }
 
     // -------------------------------------------------------------------------
-    // Profil admin (UC-05)
-    // -------------------------------------------------------------------------
-
-    public function updateProfile(User $admin, array $data): User
-    {
-        $admin->fill(['name' => $data['name'], 'email' => $data['email']]);
-        if (filled($data['password'] ?? null)) {
-            $admin->password = $data['password'];
-        }
-
-        $admin->save();
-        ActivityLog::record('profile.updated', "Profil administrator {$admin->name} diperbarui", $admin->id);
-
-        return $admin;
-    }
-
-    // -------------------------------------------------------------------------
     // Aturan keamanan
     // -------------------------------------------------------------------------
 

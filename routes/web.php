@@ -11,6 +11,9 @@ use App\Http\Controllers\EditorController;
 use App\Http\Controllers\IssueController;
 use App\Http\Controllers\ReviewerDirectoryController;
 use App\Http\Controllers\ReviewerController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PublicController;
 
 /*
 |--------------------------------------------------------------------------
@@ -18,85 +21,24 @@ use App\Http\Controllers\ReviewerController;
 |--------------------------------------------------------------------------
 */
 
-// 1. Landing page
-Route::view('/', 'landing');
 
-// 1A. READER — publik, tidak perlu login
-Route::get('/reader', function () {
+// 1. HALAMAN PUBLIK — tanpa autentikasi (beranda, artikel terbit, arsip, berkas PDF artikel terbit)
+Route::get('/', [PublicController::class, 'home'])->name('home');
 
-    $articles = [
-        1 => [
-            'title' => 'Pemanfaatan Teknologi Digital dalam Pengembangan Sistem Informasi',
-            'description' => 'Penelitian ini membahas pemanfaatan teknologi digital dalam pengembangan sistem informasi untuk meningkatkan efektivitas pelayanan.',
-            'year' => '2026',
-            'author' => 'Nama Penulis',
-            'field' => 'Teknologi Informasi',
-            'keywords' => 'teknologi, sistem informasi',
-            'abstract' => 'Penelitian ini membahas pemanfaatan teknologi digital dalam pengembangan sistem informasi untuk meningkatkan efektivitas pelayanan.',
-        ],
-        2 => [
-            'title' => 'Inovasi Pelayanan Publik Berbasis Teknologi',
-            'description' => 'Penelitian mengenai inovasi pelayanan publik melalui penerapan teknologi informasi dan komunikasi.',
-            'year' => '2026',
-            'author' => 'Nama Penulis',
-            'field' => 'Administrasi Publik',
-            'keywords' => 'pelayanan, inovasi',
-            'abstract' => 'Penelitian mengenai inovasi pelayanan publik melalui penerapan teknologi informasi dan komunikasi.',
-        ],
-        3 => [
-            'title' => 'Pengembangan Riset dan Publikasi Ilmiah',
-            'description' => 'Kajian mengenai pengembangan riset dan publikasi ilmiah sebagai bagian dari peningkatan kualitas penelitian.',
-            'year' => '2026',
-            'author' => 'Nama Penulis',
-            'field' => 'Ilmu Sosial',
-            'keywords' => 'riset, publikasi',
-            'abstract' => 'Kajian mengenai pengembangan riset dan publikasi ilmiah sebagai bagian dari peningkatan kualitas penelitian.',
-        ],
-    ];
+Route::get('/articles', [PublicController::class, 'index'])->name('reader.index');
+Route::get('/articles/{id}', [PublicController::class, 'article'])->whereNumber('id')->name('reader.article');
+Route::get('/articles/{id}/pdf', [PublicController::class, 'pdf'])->whereNumber('id')->name('articles.pdf');
+Route::get('/download/{id}', [PublicController::class, 'download'])->whereNumber('id')
+    ->middleware('throttle:60,1')->name('articles.download');
 
-    return view('reader_public.articles.index', compact('articles'));
+Route::get('/archives', [PublicController::class, 'archives'])->name('archives.index');
+Route::get('/archives/{issue}', [PublicController::class, 'issue'])->whereNumber('issue')->name('archives.show');
 
-})->name('reader.index');
+Route::get('/panduan/template', [PublicController::class, 'template'])->name('guide.template');
 
-Route::get('/reader/artikel/{id}', function ($id) {
-
-    $articles = [
-        1 => [
-            'title' => 'Pemanfaatan Teknologi Digital dalam Pengembangan Sistem Informasi',
-            'description' => 'Penelitian ini membahas pemanfaatan teknologi digital dalam pengembangan sistem informasi untuk meningkatkan efektivitas pelayanan.',
-            'year' => '2026',
-            'author' => 'Nama Penulis',
-            'field' => 'Teknologi Informasi',
-            'keywords' => 'teknologi, sistem informasi',
-            'abstract' => 'Penelitian ini membahas pemanfaatan teknologi digital dalam pengembangan sistem informasi untuk meningkatkan efektivitas pelayanan.',
-        ],
-        2 => [
-            'title' => 'Inovasi Pelayanan Publik Berbasis Teknologi',
-            'description' => 'Penelitian mengenai inovasi pelayanan publik melalui penerapan teknologi informasi dan komunikasi.',
-            'year' => '2026',
-            'author' => 'Nama Penulis',
-            'field' => 'Administrasi Publik',
-            'keywords' => 'pelayanan, inovasi',
-            'abstract' => 'Penelitian mengenai inovasi pelayanan publik melalui penerapan teknologi informasi dan komunikasi.',
-        ],
-        3 => [
-            'title' => 'Pengembangan Riset dan Publikasi Ilmiah',
-            'description' => 'Kajian mengenai pengembangan riset dan publikasi ilmiah sebagai bagian dari peningkatan kualitas penelitian.',
-            'year' => '2026',
-            'author' => 'Nama Penulis',
-            'field' => 'Ilmu Sosial',
-            'keywords' => 'riset, publikasi',
-            'abstract' => 'Kajian mengenai pengembangan riset dan publikasi ilmiah sebagai bagian dari peningkatan kualitas penelitian.',
-        ],
-    ];
-
-    abort_unless(isset($articles[$id]), 404);
-
-    $article = $articles[$id];
-
-    return view('reader_public.articles.articles', compact('article'));
-
-})->name('reader.article');
+// URL Reader lama -> URL baru
+Route::redirect('/reader', '/articles');
+Route::redirect('/reader/artikel/{id}', '/articles/{id}');
 
 // 2. Auth routes
 Route::middleware('guest')->group(function () {
@@ -127,10 +69,37 @@ Route::get('/berkas/{manuscript}/{type}', [
     ->middleware('auth')
     ->name('files.manuscript');
 
-// 4. Logout
-Route::post('/logout', [AuthController::class, 'logout'])
+// 3c. Lampiran catatan review (reviewer pemilik & editor)
+Route::get('/berkas-review/{review}', [ManuscriptFileController::class, 'review'])
     ->middleware('auth')
-    ->name('logout');
+    ->name('files.review');
+
+// 4. Logout — POST tanpa middleware auth (idempoten: sesi yang sudah habis tetap keluar bersih).
+//    GET /logout (tombol Back / ketik URL) tidak lagi 405: diarahkan ke dashboard (tamu -> login).
+Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+// (Route::redirect() bersifat ANY dan akan menimpa POST di URI yang sama, jadi dibatasi ke GET/HEAD.)
+Route::match(['get', 'head'], '/logout', \Illuminate\Routing\RedirectController::class)
+    ->defaults('destination', '/dashboard')->defaults('status', 302);
+
+// 4b. Profil Saya (semua role) — selalu pada user yang login, tanpa id di URL
+Route::middleware('auth')->group(function () {
+    Route::get('/profil', [ProfileController::class, 'show'])->name('profile.show');
+    Route::put('/profil', [ProfileController::class, 'update'])->name('profile.update');
+    Route::put('/profil/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
+
+    // Verifikasi email
+    Route::redirect('/email/verifikasi', '/profil')->name('verification.notice');
+    Route::get('/email/verifikasi/{id}/{hash}', [ProfileController::class, 'verifyEmail'])
+        ->middleware('signed')->name('verification.verify');
+    Route::post('/email/verifikasi/kirim-ulang', [ProfileController::class, 'resendVerification'])
+        ->middleware('throttle:6,1')->name('verification.send');
+
+    // Notifikasi
+    Route::get('/notifikasi', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('/notifikasi/baca-semua', [NotificationController::class, 'markAllRead'])->name('notifications.read-all');
+    Route::post('/notifikasi/{id}/buka', [NotificationController::class, 'open'])->name('notifications.open');
+    Route::post('/notifikasi/{id}/baca', [NotificationController::class, 'markRead'])->name('notifications.read');
+});
 
 // 5. EDITOR MODULE
 Route::middleware(['auth', 'role:editor'])
@@ -357,17 +326,6 @@ Route::middleware(['auth', 'role:admin'])
             AdminController::class,
             'updateRole',
         ])->name('users.role');
-
-        // Profil Admin
-        Route::get('/profil', [
-            AdminController::class,
-            'profile',
-        ])->name('profile.edit');
-
-        Route::put('/profil', [
-            AdminController::class,
-            'updateProfile',
-        ])->name('profile.update');
     });
 
 // 9. REVIEWER MODULE
@@ -376,26 +334,20 @@ Route::middleware(['auth', 'role:reviewer'])
     ->as('reviewer.')
     ->group(function () {
 
-        // Daftar naskah yang ditugaskan
-        Route::get('/naskah-ditugaskan', [
-            ReviewerController::class,
-            'index',
-        ])->name('manuscripts.index');
+        Route::get('/dashboard', [ReviewerController::class, 'dashboard'])->name('dashboard');
 
-        // Form review naskah
-        Route::get('/naskah-ditugaskan/{id}/review', [
-            ReviewerController::class,
-            'show',
-        ])->name('review-detail');
+        // Daftar naskah yang ditugaskan (tabel AJAX) & yang sudah selesai direview
+        Route::get('/naskah-ditugaskan', [ReviewerController::class, 'index'])->name('manuscripts.index');
+        Route::get('/naskah-selesai', [ReviewerController::class, 'completed'])->name('manuscripts-selesai');
 
-        // Daftar naskah yang selesai direview
-        Route::get('/naskah-selesai', [
-            ReviewerController::class,
-            'completed',
-        ])->name('manuscripts-selesai');
-
-        // Profil reviewer
-        Route::get('/profil', function () {
-            return view('roles.reviewer.profile');
-        })->name('profile');
+        // Detail & aksi pada satu penugasan review (modal)
+        Route::get('/penugasan/{review}/detail', [ReviewerController::class, 'detail'])->name('reviews.detail');
+        Route::post('/penugasan/{review}/terima', [ReviewerController::class, 'accept'])->name('reviews.accept');
+        Route::post('/penugasan/{review}/tolak', [ReviewerController::class, 'decline'])->name('reviews.decline');
+        Route::post('/penugasan/{review}/hasil', [ReviewerController::class, 'submit'])->name('reviews.submit');
+        Route::put('/penugasan/{review}/hasil', [ReviewerController::class, 'update'])->name('reviews.update');
     });
+
+// URL profil lama per-role -> Profil Saya bersama
+Route::redirect('/admin/profil', '/profil');
+Route::redirect('/reviewer/profil', '/profil');

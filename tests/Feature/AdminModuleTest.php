@@ -50,7 +50,7 @@ class AdminModuleTest extends TestCase
 
         $this->actingAs($this->admin)->get(route('admin.users.index'))->assertOk();
         $this->actingAs($this->admin)->get(route('admin.roles.index'))->assertOk()->assertSee('Mengelola pengguna');
-        $this->actingAs($this->admin)->get(route('admin.profile.edit'))->assertOk();
+        $this->actingAs($this->admin)->get(route('profile.show'))->assertOk();
     }
 
     public function test_dashboard_shows_stats_and_latest_five_logs(): void
@@ -204,24 +204,15 @@ class AdminModuleTest extends TestCase
 
     // ---------------------------------------------------------------- Profil
 
-    public function test_admin_can_update_profile_and_password(): void
+    public function test_admin_profile_is_merged_into_shared_profile(): void
     {
         $this->actingAs($this->admin);
 
-        $this->put(route('admin.profile.update'), ['name' => 'Admin Baru', 'email' => 'admin@t.test'])
-            ->assertRedirect(route('admin.profile.edit'))->assertSessionHas('success');
-        $this->assertSame('Admin Baru', $this->admin->fresh()->name);
+        // URL lama diarahkan ke Profil Saya bersama; rute lama tidak lagi bernama
+        $this->get('/admin/profil')->assertRedirect('/profil');
+        $this->assertFalse(\Illuminate\Support\Facades\Route::has('admin.profile.edit'));
 
-        // ganti password butuh password saat ini
-        $this->put(route('admin.profile.update'), [
-            'name' => 'Admin Baru', 'email' => 'admin@t.test', 'password' => 'barubaru1', 'password_confirmation' => 'barubaru1',
-        ])->assertSessionHasErrors('current_password');
-
-        $this->put(route('admin.profile.update'), [
-            'name' => 'Admin Baru', 'email' => 'admin@t.test', 'current_password' => 'password',
-            'password' => 'barubaru1', 'password_confirmation' => 'barubaru1',
-        ])->assertSessionHasNoErrors();
-        $this->assertTrue(Hash::check('barubaru1', $this->admin->fresh()->password));
+        $this->get(route('profile.show'))->assertOk()->assertSee('Total Pengguna');
     }
 
     public function test_activity_log_helper_records_actor_and_ip(): void

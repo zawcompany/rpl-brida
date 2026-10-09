@@ -20,6 +20,16 @@
                                   :class="r.recommendation_class" x-text="r.recommendation_label ?? 'Tanpa rekomendasi'"></span>
                         </div>
                         <p class="text-sm text-gray-700 mt-2 whitespace-pre-line" x-text="r.comments || 'Tanpa catatan.'"></p>
+                        <div class="flex flex-wrap gap-1.5 mt-2" x-show="(r.scores ?? []).some(s => s.value)">
+                            <template x-for="s in r.scores ?? []" :key="s.label">
+                                <span class="text-xs bg-gray-100 text-gray-600 rounded px-2 py-0.5" x-text="`${s.label}: ${s.value || '—'}`"></span>
+                            </template>
+                            <span class="text-xs bg-blue-50 text-blue-700 rounded px-2 py-0.5" x-show="r.score_average" x-text="`Rata-rata ${r.score_average}/4`"></span>
+                        </div>
+                        <a x-show="r.file_url" :href="r.file_url" target="_blank" rel="noopener"
+                           class="inline-block mt-2 text-xs font-medium text-red-600 hover:text-red-700">
+                            Berkas catatan reviewer: <span x-text="r.file_name"></span>
+                        </a>
                     </div>
                 </template>
                 <p x-show="!(detail?.reviews ?? []).length" class="text-sm text-gray-400 bg-gray-50 rounded-lg p-3">

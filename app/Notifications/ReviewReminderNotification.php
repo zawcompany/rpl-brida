@@ -21,7 +21,7 @@ class ReviewReminderNotification extends Notification implements ShouldQueue
 
     public function via(object $notifiable): array
     {
-        return ['mail'];
+        return ['mail', 'database'];
     }
 
     public function toMail(object $notifiable): MailMessage
@@ -40,5 +40,16 @@ class ReviewReminderNotification extends Notification implements ShouldQueue
 
         return $mail->action('Buka Dashboard', url('/dashboard'))
             ->line('Terima kasih atas kontribusi Anda.');
+    }
+
+    /** Salinan di halaman Notifikasi (kanal database). */
+    public function toArray(object $notifiable): array
+    {
+        return [
+            'type'    => 'review.reminder',
+            'title'   => 'Pengingat review',
+            'message' => "Mohon segera menyelesaikan review \"{$this->review->manuscript->title}\".",
+            'url'     => route('reviewer.manuscripts.index', absolute: false),
+        ];
     }
 }

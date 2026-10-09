@@ -25,6 +25,22 @@ class Review extends Model
         'ditolak'      => 'Ditolak',
     ];
 
+    /** Kriteria rubrik penilaian: kolom => label. Semua dinilai dengan LEVELS. */
+    public const RUBRIC = [
+        'relevansi_topik'       => 'Relevansi Topik',
+        'metodologi_penelitian' => 'Metodologi Penelitian',
+        'kebaruan'              => 'Kebaruan / Orisinalitas',
+        'kualitas_penulisan'    => 'Kualitas Penulisan',
+    ];
+
+    /** Tingkat penilaian => skor numerik (untuk rata-rata). */
+    public const LEVELS = [
+        'Sangat Baik' => 4,
+        'Baik'        => 3,
+        'Cukup'       => 2,
+        'Kurang'      => 1,
+    ];
+
     protected $fillable = [
         'manuscript_id',
         'reviewer_id',
@@ -33,6 +49,10 @@ class Review extends Model
         'recommendation',
         'relevansi_topik',
         'metodologi_penelitian',
+        'kebaruan',
+        'kualitas_penulisan',
+        'review_file_path',
+        'review_file_name',
         'status',
         'due_at',
         'completed_at',
@@ -92,6 +112,20 @@ class Review extends Model
     {
         return $this->superseded_at === null
             && ($this->status === 'ditolak_reviewer' || $this->isOverdue());
+    }
+
+    /** @return array<string, ?string> kolom rubrik => tingkat penilaian */
+    public function getScoresAttribute(): array
+    {
+        return collect(array_keys(self::RUBRIC))->mapWithKeys(fn (string $k) => [$k => $this->{$k}])->all();
+    }
+
+    /** Rata-rata skor rubrik (1-4), null bila belum dinilai. */
+    public function getScoreAverageAttribute(): ?float
+    {
+        $values = collect($this->scores)->map(fn (?string $level) => self::LEVELS[$level] ?? null)->filter();
+
+        return $values->isEmpty() ? null : round($values->avg(), 1);
     }
 
     public function getStatusLabelAttribute(): string

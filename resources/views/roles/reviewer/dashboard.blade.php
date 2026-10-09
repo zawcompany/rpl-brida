@@ -1,196 +1,85 @@
 @extends('layouts.app')
 
 @section('content')
+@php
+    $icons = [
+        'doc'   => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>',
+        'clock' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>',
+        'check' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>',
+        'alert' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>',
+    ];
+    $colors = [
+        'blue'   => ['bg' => 'bg-blue-50',   'text' => 'text-blue-600'],
+        'purple' => ['bg' => 'bg-purple-50', 'text' => 'text-purple-600'],
+        'orange' => ['bg' => 'bg-orange-50', 'text' => 'text-orange-600'],
+        'green'  => ['bg' => 'bg-green-50',  'text' => 'text-green-600'],
+    ];
+@endphp
 
-<div class="min-h-screen bg-gray-50">
-
-    {{-- =========================
-         WELCOME REVIEWER
-    ========================== --}}
-    <div class="mb-8 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-
-        <div class="flex flex-col items-center justify-between p-6 md:flex-row md:p-8">
-
-            {{-- Sisi Kiri: Teks --}}
-            <div class="md:w-2/3">
-
-                <p class="mb-1 font-medium text-gray-500">
-                    Selamat datang,
-                </p>
-
-                <h1 class="mb-4 text-3xl font-bold text-gray-900">
-                    Reviewer
-                </h1>
-
-                <p class="max-w-4xl leading-relaxed text-gray-600">
-                    Silakan lakukan penelaahan terhadap naskah yang ditugaskan secara objektif dan
-                    teliti. Berikan penilaian, komentar, serta rekomendasi yang konstruktif untuk
-                    membantu Editor dalam menentukan kelayakan naskah
-                </p>
-
-            </div>
-
-            {{-- Sisi Kanan: Ilustrasi --}}
-            <div class="mt-6 flex justify-end md:mt-0 md:w-1/3">
-
-                <img
-                    src="{{ asset('images/reviewer.png') }}"
-                    alt="Ilustrasi Reviewer"
-                    class="h-auto w-48 object-contain drop-shadow-md"
-                    onerror="this.onerror=null; this.src='https://placehold.co/400x300/f3f4f6/4b5563?text=Reviewer+Illustration';"
-                >
-
-            </div>
-
+{{-- WELCOME BANNER --}}
+<div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden mb-6">
+    <div class="flex flex-col md:flex-row items-center justify-between p-6 md:p-8">
+        <div class="md:w-2/3">
+            <p class="text-gray-500 font-medium mb-1">Selamat datang,</p>
+            <h1 class="text-3xl font-bold text-gray-900 mb-3">{{ Auth::user()->name }}</h1>
+            <p class="text-gray-600 leading-relaxed text-sm">
+                Silakan lakukan penelaahan terhadap naskah yang ditugaskan secara objektif dan teliti. Berikan penilaian, komentar,
+                serta rekomendasi yang konstruktif untuk membantu Editor dalam menentukan kelayakan naskah.
+            </p>
         </div>
-
+        <div class="md:w-1/3 mt-6 md:mt-0 flex justify-end">
+            <img src="{{ asset('images/reviewer.png') }}" alt="Ilustrasi Reviewer"
+                 class="w-48 h-auto object-contain drop-shadow-md"
+                 onerror="this.onerror=null; this.src='https://placehold.co/400x300/f3f4f6/4b5563?text=Reviewer+Illustration';">
+        </div>
     </div>
-
-
-    {{-- =========================
-        STATISTIK REVIEWER
-    ========================== --}}
-    <div class="flex w-full flex-nowrap gap-5">
-
-        {{-- Naskah Ditugaskan --}}
-        <div class="min-w-0 flex-1 rounded-xl border border-gray-300 bg-white p-6 shadow-sm flex flex-col items-center text-center">
-
-            <div class="mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-gray-200">
-
-                <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke-width="1.5"
-                    stroke="currentColor"
-                    class="h-6 w-6 text-gray-500"
-                >
-                    <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5A3.375 3.375 0 0 0 10.125 2.25H6.75A2.25 2.25 0 0 0 4.5 4.5v15A2.25 2.25 0 0 0 6.75 21.75h10.5a2.25 2.25 0 0 0 2.25-2.25v-5.25Z"
-                    />
-                </svg>
-
-            </div>
-
-            <p class="text-base font-medium text-gray-900">
-                Naskah Ditugaskan
-            </p>
-
-            <p class="mt-3 text-4xl font-bold text-gray-900">
-                10
-            </p>
-
-        </div>
-
-
-        {{-- Belum Direview --}}
-        <div class="min-w-0 flex-1 rounded-xl border border-gray-300 bg-white p-6 shadow-sm flex flex-col items-center text-center">
-
-            <div class="mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-gray-200">
-
-                <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke-width="1.5"
-                    stroke="currentColor"
-                    class="h-6 w-6 text-gray-500"
-                >
-                    <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M12 6v6l4 2"
-                    />
-
-                    <circle
-                        cx="12"
-                        cy="12"
-                        r="9"
-                    />
-                </svg>
-
-            </div>
-
-            <p class="text-base font-medium text-gray-900">
-                Belum Direview
-            </p>
-
-            <p class="mt-3 text-4xl font-bold text-gray-900">
-                10
-            </p>
-
-        </div>
-
-
-        {{-- Sedang Direview --}}
-        <div class="min-w-0 flex-1 rounded-xl border border-gray-300 bg-white p-6 shadow-sm flex flex-col items-center text-center">
-
-            <div class="mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-gray-200">
-
-                <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke-width="1.5"
-                    stroke="currentColor"
-                    class="h-6 w-6 text-gray-500"
-                >
-                    <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M16.862 4.487 18.5 2.85a2.121 2.121 0 1 1 3 3L8.25 19.1 4 20l.9-4.25L16.862 4.487Z"
-                    />
-                </svg>
-
-            </div>
-
-            <p class="text-base font-medium text-gray-900">
-                Sedang Direview
-            </p>
-
-            <p class="mt-3 text-4xl font-bold text-gray-900">
-                10
-            </p>
-
-        </div>
-
-
-        {{-- Selesai Direview --}}
-        <div class="min-w-0 flex-1 rounded-xl border border-gray-300 bg-white p-6 shadow-sm flex flex-col items-center text-center">
-
-            <div class="mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-gray-200">
-
-                <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke-width="1.5"
-                    stroke="currentColor"
-                    class="h-6 w-6 text-gray-500"
-                >
-                    <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="m4.5 12.75 6 6 9-13.5"
-                    />
-                </svg>
-
-            </div>
-
-            <p class="text-base font-medium text-gray-900">
-                Selesai Direview
-            </p>
-
-            <p class="mt-3 text-4xl font-bold text-gray-900">
-                10
-            </p>
-
-        </div>
-
-    </div>
-
 </div>
 
+{{-- STAT WIDGETS --}}
+<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-6">
+    @foreach ($stats as $stat)
+    @php $c = $colors[$stat['color']]; $needsAction = $stat['warning'] && $stat['count'] > 0; @endphp
+    <a href="{{ $stat['url'] }}"
+       class="bg-white rounded-xl border shadow-sm p-5 flex flex-col gap-3 transition hover:shadow-md hover:-translate-y-0.5 {{ $needsAction ? 'border-orange-300 ring-1 ring-orange-200' : 'border-gray-200' }}">
+        <div class="flex items-center justify-between">
+            <span class="text-sm font-medium text-gray-500">{{ $stat['label'] }}</span>
+            <div class="{{ $c['bg'] }} {{ $c['text'] }} p-2 rounded-lg">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">{!! $icons[$stat['icon']] !!}</svg>
+            </div>
+        </div>
+        <p class="text-3xl font-bold text-gray-900">{{ $stat['count'] }}</p>
+        @if ($stat['warning'])
+            <x-editor.badge :color="$needsAction ? 'bg-orange-100 text-orange-800' : 'bg-gray-100 text-gray-500'" class="self-start">
+                {{ $needsAction ? 'Segera selesaikan' : 'Tidak ada yang mendesak' }}
+            </x-editor.badge>
+        @else
+            <span class="text-xs text-gray-400">Lihat daftar →</span>
+        @endif
+    </a>
+    @endforeach
+</div>
+
+{{-- AKTIVITAS / RIWAYAT REVIEW TERBARU --}}
+<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+    <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+        <h2 class="text-base font-bold text-gray-900">Aktivitas / Riwayat Review Terbaru</h2>
+        <a href="{{ route('reviewer.manuscripts.index') }}" class="text-xs font-medium text-red-600 hover:text-red-700">Lihat semua</a>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-100">
+            <thead class="bg-gray-50">
+                <tr>
+                    @foreach (['Judul Naskah', 'Tanggal Penugasan', 'Batas Waktu', 'Status Review', 'Aksi'] as $header)
+                        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ $header }}</th>
+                    @endforeach
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-50">
+                @include('roles.reviewer.partials.assignment-table-rows', ['rows' => $recent])
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@include('roles.reviewer.partials.review-modal', ['reload' => true])
 @endsection

@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Review;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -29,6 +30,10 @@ class ReviewResource extends JsonResource
             'can_remind'           => $this->isActive(),
             'can_replace'          => $this->isReplaceable(),
             'comments'             => $this->comments,
+            'scores'               => collect(Review::RUBRIC)->map(fn (string $label, string $key) => ['label' => $label, 'value' => $this->{$key}])->values()->all(),
+            'score_average'        => $this->score_average,
+            'file_name'            => $this->review_file_name,
+            'file_url'             => $this->review_file_path ? route('files.review', $this->id) : null,
             'recommendation'       => $this->recommendation,
             'recommendation_label' => $this->recommendation_label,
             'recommendation_class' => $this->recommendation_badge_class,

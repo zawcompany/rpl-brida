@@ -65,8 +65,8 @@
             <div class="space-y-1">
 
                 <a
-                    href="{{ route('admin.profile.edit') }}"
-                    class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors {{ request()->routeIs('admin.profile.*') ? 'bg-red-50 text-red-700 font-medium' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}"
+                    href="{{ route('profile.show') }}"
+                    class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors {{ request()->routeIs('profile.*') ? 'bg-red-50 text-red-700 font-medium' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}"
                     :class="!sidebarOpen && 'justify-center px-0'"
                     title="Profil Saya"
                 >
@@ -217,8 +217,8 @@
             <div class="space-y-1">
 
                 <a
-                    href="#"
-                    class="flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
+                    href="{{ route('profile.show') }}"
+                    class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors {{ request()->routeIs('profile.*') ? 'bg-red-50 text-red-700 font-medium' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}"
                     :class="!sidebarOpen && 'justify-center px-0'"
                     title="Profil Saya"
                 >
@@ -325,8 +325,8 @@
             <div class="space-y-1">
 
                 <a
-                    href="#"
-                    class="flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
+                    href="{{ route('profile.show') }}"
+                    class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors {{ request()->routeIs('profile.*') ? 'bg-red-50 text-red-700 font-medium' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}"
                     :class="!sidebarOpen && 'justify-center px-0'"
                     title="Profil Saya"
                 >
@@ -361,7 +361,7 @@
 
                 <a
                     href="{{ route('reviewer.manuscripts.index') }}"
-                    class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors {{ request()->routeIs('reviewer.manuscripts.*') || request()->routeIs('reviewer.review-detail') || request()->routeIs('reviewer.manuscripts-selesai') ? 'bg-red-50 text-red-700 font-medium' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}"
+                    class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors {{ request()->routeIs('reviewer.manuscripts.*') || request()->routeIs('reviewer.reviews.*') || request()->routeIs('reviewer.manuscripts-selesai') ? 'bg-red-50 text-red-700 font-medium' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}"
                     :class="!sidebarOpen && 'justify-center px-0'"
                     title="Naskah Ditugaskan"
                 >
@@ -389,8 +389,8 @@
             <div class="space-y-1">
 
                 <a
-                    href="{{ route('reviewer.profile') }}"
-                    class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors {{ request()->routeIs('reviewer.profile') ? 'bg-red-50 text-red-700 font-medium' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}"
+                    href="{{ route('profile.show') }}"
+                    class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors {{ request()->routeIs('profile.*') ? 'bg-red-50 text-red-700 font-medium' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}"
                     :class="!sidebarOpen && 'justify-center px-0'"
                     title="Profil Saya"
                 >

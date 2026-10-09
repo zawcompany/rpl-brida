@@ -16,8 +16,10 @@ use Illuminate\Support\Facades\DB;
  */
 class IssueService
 {
-    public function __construct(private readonly ManuscriptFileStore $files)
-    {
+    public function __construct(
+        private readonly ManuscriptFileStore $files,
+        private readonly NotificationService $notifier,
+    ) {
     }
 
     // -------------------------------------------------------------------------
@@ -148,11 +150,13 @@ class IssueService
             throw new DomainException("{$missing} naskah belum memiliki berkas PDF final (camera-ready).");
         }
 
-        return DB::transaction(function () use ($issue) {
+        return DB::transaction(function () use ($issue, $manuscripts) {
             $now = now();
 
             $issue->manuscripts()->update(['status' => 'diterbitkan', 'published_at' => $now]);
             $issue->update(['status' => Issue::PUBLISHED, 'published_at' => $now]);
+
+            $manuscripts->each(fn (Manuscript $m) => $this->notifier->published($m));
 
             return $issue->refresh();
         });

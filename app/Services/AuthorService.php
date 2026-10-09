@@ -25,8 +25,10 @@ class AuthorService
     /** Status yang dihitung sebagai "Sedang Ditinjau" di widget. */
     public const IN_REVIEW_STATUSES = ['pemeriksaan_awal', 'ditinjau', 'menunggu_keputusan'];
 
-    public function __construct(private readonly ManuscriptFileStore $files)
-    {
+    public function __construct(
+        private readonly ManuscriptFileStore $files,
+        private readonly NotificationService $notifier,
+    ) {
     }
 
     // -------------------------------------------------------------------------
@@ -83,7 +85,7 @@ class AuthorService
     {
         $path = $this->files->put($file, "manuscripts/{$author->id}");
 
-        return $author->manuscripts()->create([
+        $manuscript = $author->manuscripts()->create([
             'title'              => $data['title'],
             'research_field_id'  => $data['research_field_id'],
             'abstract'           => $data['abstract'],
@@ -94,6 +96,10 @@ class AuthorService
             'status'             => 'pending',
             'submitted_at'       => now(),
         ]);
+
+        $this->notifier->manuscriptSubmitted($manuscript);
+
+        return $manuscript;
     }
 
     // -------------------------------------------------------------------------
@@ -244,6 +250,7 @@ class AuthorService
         }
 
         $this->files->delete($oldPath); // ganti revisi lama dari putaran sebelumnya
+        $this->notifier->revisionSubmitted($manuscript);
 
         return $manuscript;
     }

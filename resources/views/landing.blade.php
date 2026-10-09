@@ -1,99 +1,161 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SIMPIL - Sistem Informasi Manajemen Publikasi Ilmiah BRIDA</title>
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
-</head>
-<body class="bg-gray-50 font-sans antialiased text-gray-800 min-h-screen flex flex-col">
+@extends('layouts.guest')
 
-    <!-- HEADER / NAVBAR TEMPLATE UMUM -->
-    <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
-            
-            <!-- SISI KIRI: LOGO BRIDA -->
-            <div class="flex-shrink-0 flex items-center w-64">
-                <a href="{{ url('/') }}" class="flex items-center space-x-3">
-                    <img src="{{ asset('images/logo-brida.png') }}" alt="Logo BRIDA" class="h-10 w-auto">
+@section('content')
+@php
+    $submitUrl = auth()->check()
+        ? (auth()->user()->role === 'Author' ? route('author.manuscripts.create') : route('dashboard'))
+        : route('register');
+
+    $scope = [
+        ['Teknologi & Transformasi Digital', 'Sistem informasi, kecerdasan buatan, keamanan siber, dan layanan digital.', 'Teknologi'],
+        ['Tata Kelola Pemerintahan', 'Administrasi, kebijakan publik, dan pelayanan publik.', 'Pemerintahan'],
+        ['Inovasi Daerah', 'Inovasi pelayanan dan pembangunan berbasis riset di tingkat daerah.', 'Inovasi'],
+        ['Kesehatan & Lingkungan', 'Kesehatan masyarakat, lingkungan hidup, dan ketahanan kota.', 'Kesehatan'],
+        ['Sosial, Ekonomi & Budaya', 'Dinamika sosial, ekonomi kerakyatan, dan kearifan lokal.', 'Sosial'],
+        ['Pendidikan & Pengembangan SDM', 'Inovasi pembelajaran dan peningkatan kapasitas sumber daya manusia.', 'Pendidikan'],
+    ];
+
+    $flow = [
+        ['Registrasi', 'Buat akun Author lalu lengkapi profil.'],
+        ['Submit Naskah', 'Isi metadata, abstrak, kata kunci, dan unggah berkas.'],
+        ['Pemeriksaan Editor', 'Editor memeriksa kelengkapan dan kesesuaian naskah.'],
+        ['Peer Review', 'Reviewer menilai secara anonim dan memberi rekomendasi.'],
+        ['Revisi & Keputusan', 'Perbaiki naskah bila diminta; editor menetapkan keputusan.'],
+        ['Terbit', 'Naskah disetujui ditata dan diterbitkan pada edisi jurnal.'],
+    ];
+@endphp
+
+{{-- HERO --}}
+<section class="bg-white border-b border-gray-100">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24 text-center">
+        <p class="text-sm font-semibold uppercase tracking-widest text-red-600">BRIDA Kota Makassar</p>
+        <h1 class="mx-auto mt-3 max-w-4xl text-3xl font-extrabold leading-tight text-gray-900 sm:text-5xl">
+            Sistem Informasi Manajemen Publikasi Ilmiah
+        </h1>
+        <p class="mx-auto mt-5 max-w-2xl text-base text-gray-500 sm:text-lg">
+            Wadah penerbitan hasil riset dan inovasi daerah Badan Riset dan Inovasi Daerah (BRIDA) Kota Makassar,
+            dikelola secara terbuka, terstruktur, dan aman.
+        </p>
+        <div class="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <a href="{{ $submitUrl }}" class="w-full sm:w-auto rounded-lg bg-red-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700">Ajukan Naskah</a>
+            <a href="#terbitan" class="w-full sm:w-auto rounded-lg border border-gray-300 bg-white px-6 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50">Telusuri Artikel</a>
+        </div>
+    </div>
+</section>
+
+{{-- STATISTIK --}}
+<section class="-mt-8">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <x-public.stat-card label="Artikel Terbit" :value="$stats['articles']" />
+            <x-public.stat-card label="Volume" :value="$stats['volumes']" />
+            <x-public.stat-card label="Total Unduhan" :value="$stats['downloads']" />
+        </div>
+    </div>
+</section>
+
+{{-- TENTANG --}}
+<x-public.section id="tentang" title="Tentang Kami" subtitle="Visi, misi, dan tujuan penerbitan riset serta inovasi daerah.">
+    <div class="grid grid-cols-1 gap-5 md:grid-cols-3">
+        <div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+            <h3 class="font-bold text-gray-900">Visi</h3>
+            <p class="mt-2 text-sm leading-relaxed text-gray-600">Menjadi rujukan publikasi ilmiah yang terpercaya untuk mendukung pembangunan daerah berbasis riset dan inovasi.</p>
+        </div>
+        <div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+            <h3 class="font-bold text-gray-900">Misi</h3>
+            <ul class="mt-2 list-disc space-y-1 pl-5 text-sm leading-relaxed text-gray-600">
+                <li>Mengelola proses penerbitan yang transparan dan akuntabel.</li>
+                <li>Menjaga mutu melalui telaah sejawat (peer review).</li>
+                <li>Membuka akses hasil riset bagi masyarakat luas.</li>
+            </ul>
+        </div>
+        <div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+            <h3 class="font-bold text-gray-900">Tujuan</h3>
+            <p class="mt-2 text-sm leading-relaxed text-gray-600">Menyebarluaskan hasil riset dan inovasi kepada pemerintah, akademisi, peneliti, dan masyarakat sebagai dasar kebijakan serta pengembangan keilmuan.</p>
+        </div>
+    </div>
+</x-public.section>
+
+{{-- TERBITAN TERBARU --}}
+<x-public.section id="terbitan" tone="white" title="Terbitan Terbaru"
+    :subtitle="$current ? $current->label . ($current->title ? ' — ' . $current->title : '') : 'Edisi terbaru yang telah diterbitkan.'">
+    @if ($current && $current->manuscripts->isNotEmpty())
+        <div class="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+            @foreach ($current->manuscripts as $article)
+                <x-public.article-card :article="$article->setRelation('issue', $current)" :show-issue="false" />
+            @endforeach
+        </div>
+        <div class="mt-8 flex flex-wrap gap-3">
+            <a href="{{ route('archives.show', $current) }}" class="rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50">Lihat Seluruh Edisi Ini</a>
+            <a href="{{ route('reader.index') }}" class="rounded-lg px-5 py-2.5 text-sm font-semibold text-red-600 transition hover:bg-red-50">Telusuri Semua Artikel</a>
+        </div>
+    @else
+        <div class="rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 p-10 text-center text-sm text-gray-500">
+            Belum ada edisi yang diterbitkan. Terbitan pertama akan tampil di sini.
+        </div>
+    @endif
+</x-public.section>
+
+{{-- ARSIP --}}
+<x-public.section id="arsip" title="Arsip Terbitan" subtitle="Edisi-edisi sebelumnya, diurutkan dari yang terbaru.">
+    @if ($archive->isNotEmpty())
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            @foreach ($archive as $issue)
+                <a href="{{ route('archives.show', $issue) }}" class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition hover:shadow-md">
+                    <p class="font-semibold text-gray-900">{{ $issue->label }}</p>
+                    @if ($issue->title)<p class="mt-0.5 text-sm text-gray-500">{{ $issue->title }}</p>@endif
+                    <p class="mt-3 text-xs font-medium text-red-600">{{ $issue->articles_count }} artikel →</p>
                 </a>
-            </div>
+            @endforeach
+        </div>
+    @else
+        <p class="text-sm text-gray-500">Belum ada edisi sebelumnya.</p>
+    @endif
+    <a href="{{ route('archives.index') }}" class="mt-6 inline-block text-sm font-semibold text-red-600 hover:text-red-700">Lihat seluruh arsip →</a>
+</x-public.section>
 
-            <!-- SISI TENGAH: PENCARIAN NASKAH ATAU JURNAL -->
-            <div class="flex-1 max-w-2xl">
-                <form action="#" method="GET" class="relative">
-                    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                        </svg>
+{{-- FOKUS & RUANG LINGKUP --}}
+<x-public.section id="fokus" tone="white" title="Fokus & Ruang Lingkup" subtitle="Topik riset dan inovasi yang diterima untuk diterbitkan.">
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        @foreach ($scope as [$name, $desc, $term])
+            <a href="{{ route('reader.index', ['q' => $term]) }}" class="group rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition hover:border-red-300 hover:shadow-md">
+                <h3 class="font-semibold text-gray-900 group-hover:text-red-700">{{ $name }}</h3>
+                <p class="mt-1 text-sm text-gray-500">{{ $desc }}</p>
+            </a>
+        @endforeach
+    </div>
+</x-public.section>
+
+{{-- PANDUAN PENULIS --}}
+<x-public.section id="panduan" title="Panduan Penulis" subtitle="Syarat pengajuan dan alur peer review naskah.">
+    <div class="grid grid-cols-1 gap-8 lg:grid-cols-5">
+        <div class="lg:col-span-2 space-y-4">
+            <div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+                <h3 class="font-bold text-gray-900">Syarat Pengajuan</h3>
+                <ul class="mt-3 list-disc space-y-1.5 pl-5 text-sm text-gray-600">
+                    <li>Naskah orisinal dan belum dipublikasikan di tempat lain.</li>
+                    <li>Berkas PDF atau DOCX, maksimal 10 MB.</li>
+                    <li>Memuat judul, abstrak, kata kunci, dan bidang keahlian.</li>
+                    <li>Penulis pendamping dicantumkan pada form pengajuan.</li>
+                </ul>
+            </div>
+            <a href="{{ route('guide.template') }}" class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-red-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                Unduh Template Naskah (.docx)
+            </a>
+        </div>
+
+        <ol class="lg:col-span-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            @foreach ($flow as $i => [$step, $desc])
+                <li class="flex gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                    <span class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-red-600 text-sm font-bold text-white">{{ $i + 1 }}</span>
+                    <div>
+                        <p class="font-semibold text-gray-900">{{ $step }}</p>
+                        <p class="text-sm text-gray-500">{{ $desc }}</p>
                     </div>
-                    <input 
-                        type="search" 
-                        name="q" 
-                        placeholder="Cari pengguna atau naskah..." 
-                        class="w-full pl-10 pr-4 py-2.5 bg-gray-100 border border-transparent rounded-full text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:bg-white focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-all shadow-inner"
-                    >
-                </form>
-            </div>
-
-            <!-- SISI KANAN: MASUK / DAFTAR -->
-            <div class="flex-shrink-0 flex items-center space-x-3">
-                @auth
-                    <!-- Jika Pengguna Sudah Login -->
-                    <a href="{{ route('dashboard') }}" class="px-5 py-2.5 rounded-lg text-sm font-semibold bg-red-600 text-white hover:bg-red-700 transition-colors shadow-sm">
-                        Dashboard
-                    </a>
-                @else
-                    <!-- Jika Pengguna Belum Login (Guest/Reader) -->
-                    <a href="{{ route('login') }}" class="px-4 py-2 rounded-lg text-sm font-semibold text-gray-700 hover:text-red-600 hover:bg-gray-50 transition-colors">
-                        Masuk
-                    </a>
-                    <a href="{{ route('register') }}" class="px-5 py-2.5 rounded-lg text-sm font-semibold bg-red-600 text-white hover:bg-red-700 transition-colors shadow-sm">
-                        Daftar
-                    </a>
-                @endauth
-            </div>
-
-        </div>
-    </header>
-
-    <!-- AREA KONTEN UTAMA (KERANGKA UNTUK TIM) -->
-    <main class="flex-1">
-        
-        <!-- SECTION HERO / BANNER -->
-        <section class="py-12 bg-white border-b border-gray-100">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-                <h1 class="text-3xl font-extrabold text-gray-900 sm:text-4xl">
-                    Sistem Informasi Manajemen Publikasi Ilmiah
-                </h1>
-                <p class="mt-3 max-w-2xl mx-auto text-base text-gray-500">
-                    Badan Riset dan Inovasi Daerah (BRIDA) Kota Makassar
-                </p>
-            </div>
-        </section>
-
-        <!-- CONTAINER UNTUK DIISI OLEH ANGGOTA TIM -->
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-            
-            <!-- PLACEHOLDER KONTEN LANDING PAGE -->
-            <div class="border-2 border-dashed border-gray-300 rounded-2xl p-12 text-center bg-white shadow-sm">
-                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
-                </svg>
-                <h3 class="mt-4 text-lg font-semibold text-gray-800">Area Konten Landing Page</h3>
-                <p class="mt-2 text-sm text-gray-500 max-w-md mx-auto">
-                    Bagian ini disiapkan sebagai tempat untuk tim Anda menambahkan daftar jurnal publikasi, artikel unggulan, atau statistik BRIDA.
-                </p>
-            </div>
-
-        </div>
-
-    </main>
-
-    <!-- FOOTER SEDERHANA -->
-    <footer class="bg-white border-t border-gray-200 py-6 text-center text-xs text-gray-500">
-        &copy; {{ date('Y') }} BRIDA Kota Makassar. All rights reserved.
-    </footer>
-
-</body>
-</html>
+                </li>
+            @endforeach
+        </ol>
+    </div>
+</x-public.section>
+@endsection

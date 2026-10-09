@@ -16,6 +16,7 @@ class DashboardController extends Controller
         'Administrator' => AdminController::class,
         'Editor'        => EditorController::class,
         'Author'        => AuthorController::class,
+        'Reviewer'      => ReviewerController::class,
     ];
 
     public function __invoke(Request $request): View
@@ -26,7 +27,6 @@ class DashboardController extends Controller
             return app()->call([app(self::HANDLERS[$role]), 'dashboard']);
         }
 
-        // Reviewer (modul belum dibangun) dan role tak dikenal
-        return view($role === 'Reviewer' ? 'roles.reviewer.dashboard' : 'roles.author.dashboard');
+        return view('roles.author.dashboard'); // role tak dikenal diperlakukan sebagai Author (perilaku lama)
     }
 }

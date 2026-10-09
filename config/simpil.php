@@ -15,6 +15,15 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Identitas jurnal (dipakai pada kutipan artikel)
+    |--------------------------------------------------------------------------
+    */
+    'journal' => [
+        'name' => env('JOURNAL_NAME', 'SIMPIL BRIDA Kota Makassar'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Jaringan (di belakang load balancer / reverse proxy)
     |--------------------------------------------------------------------------
     | TRUSTED_PROXIES: '*' (semua, mis. ALB di VPC privat), atau daftar IP dipisah koma.
