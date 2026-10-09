@@ -21,6 +21,87 @@ use App\Http\Controllers\ReviewerController;
 // 1. Landing page
 Route::view('/', 'landing');
 
+// 1A. READER — publik, tidak perlu login
+Route::get('/reader', function () {
+
+    $articles = [
+        1 => [
+            'title' => 'Pemanfaatan Teknologi Digital dalam Pengembangan Sistem Informasi',
+            'description' => 'Penelitian ini membahas pemanfaatan teknologi digital dalam pengembangan sistem informasi untuk meningkatkan efektivitas pelayanan.',
+            'year' => '2026',
+            'author' => 'Nama Penulis',
+            'field' => 'Teknologi Informasi',
+            'keywords' => 'teknologi, sistem informasi',
+            'abstract' => 'Penelitian ini membahas pemanfaatan teknologi digital dalam pengembangan sistem informasi untuk meningkatkan efektivitas pelayanan.',
+        ],
+
+        2 => [
+            'title' => 'Inovasi Pelayanan Publik Berbasis Teknologi',
+            'description' => 'Penelitian mengenai inovasi pelayanan publik melalui penerapan teknologi informasi dan komunikasi.',
+            'year' => '2026',
+            'author' => 'Nama Penulis',
+            'field' => 'Administrasi Publik',
+            'keywords' => 'pelayanan, inovasi',
+            'abstract' => 'Penelitian mengenai inovasi pelayanan publik melalui penerapan teknologi informasi dan komunikasi.',
+        ],
+
+        3 => [
+            'title' => 'Pengembangan Riset dan Publikasi Ilmiah',
+            'description' => 'Kajian mengenai pengembangan riset dan publikasi ilmiah sebagai bagian dari peningkatan kualitas penelitian.',
+            'year' => '2026',
+            'author' => 'Nama Penulis',
+            'field' => 'Ilmu Sosial',
+            'keywords' => 'riset, publikasi',
+            'abstract' => 'Kajian mengenai pengembangan riset dan publikasi ilmiah sebagai bagian dari peningkatan kualitas penelitian.',
+        ],
+    ];
+
+    return view('reader_public.articles.index', compact('articles'));
+
+})->name('reader.index');
+
+
+Route::get('/reader/artikel/{id}', function ($id) {
+
+    $articles = [
+        1 => [
+            'title' => 'Pemanfaatan Teknologi Digital dalam Pengembangan Sistem Informasi',
+            'description' => 'Penelitian ini membahas pemanfaatan teknologi digital dalam pengembangan sistem informasi untuk meningkatkan efektivitas pelayanan.',
+            'year' => '2026',
+            'author' => 'Nama Penulis',
+            'field' => 'Teknologi Informasi',
+            'keywords' => 'teknologi, sistem informasi',
+            'abstract' => 'Penelitian ini membahas pemanfaatan teknologi digital dalam pengembangan sistem informasi untuk meningkatkan efektivitas pelayanan.',
+        ],
+
+        2 => [
+            'title' => 'Inovasi Pelayanan Publik Berbasis Teknologi',
+            'description' => 'Penelitian mengenai inovasi pelayanan publik melalui penerapan teknologi informasi dan komunikasi.',
+            'year' => '2026',
+            'author' => 'Nama Penulis',
+            'field' => 'Administrasi Publik',
+            'keywords' => 'pelayanan, inovasi',
+            'abstract' => 'Penelitian mengenai inovasi pelayanan publik melalui penerapan teknologi informasi dan komunikasi.',
+        ],
+
+        3 => [
+            'title' => 'Pengembangan Riset dan Publikasi Ilmiah',
+            'description' => 'Kajian mengenai pengembangan riset dan publikasi ilmiah sebagai bagian dari peningkatan kualitas penelitian.',
+            'year' => '2026',
+            'author' => 'Nama Penulis',
+            'field' => 'Ilmu Sosial',
+            'keywords' => 'riset, publikasi',
+            'abstract' => 'Kajian mengenai pengembangan riset dan publikasi ilmiah sebagai bagian dari peningkatan kualitas penelitian.',
+        ],
+    ];
+
+    abort_unless(isset($articles[$id]), 404);
+
+    $article = $articles[$id];
+
+    return view('reader_public.articles.articles', compact('article'));
+
+})->name('reader.article');
 // 2. Auth routes — GET untuk form, POST untuk proses
 Route::middleware('guest')->group(function () {
     Route::get('/login',     [AuthController::class, 'showLogin'])->name('login');
