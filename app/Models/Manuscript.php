@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Support\Facades\Storage;
 
 class Manuscript extends Model
 {
@@ -135,21 +134,22 @@ class Manuscript extends Model
 
     public function getFileUrlAttribute(): ?string
     {
-        return $this->publicUrl($this->file_path);
+        return $this->fileRoute($this->file_path, 'original');
     }
 
     public function getRevisionFileUrlAttribute(): ?string
     {
-        return $this->publicUrl($this->revision_file_path);
+        return $this->fileRoute($this->revision_file_path, 'revision');
     }
 
     public function getFinalFileUrlAttribute(): ?string
     {
-        return $this->publicUrl($this->final_file_path);
+        return $this->fileRoute($this->final_file_path, 'final');
     }
 
-    private function publicUrl(?string $path): ?string
+    /** Berkas privat: URL mengarah ke rute terotorisasi, bukan ke path storage. */
+    private function fileRoute(?string $path, string $type): ?string
     {
-        return $path ? Storage::disk('public')->url($path) : null;
+        return $path ? route('files.manuscript', [$this->id, $type]) : null;
     }
 }
