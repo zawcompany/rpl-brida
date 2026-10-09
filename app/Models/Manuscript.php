@@ -59,6 +59,12 @@ class Manuscript extends Model
     /** Status yang tampil di menu Peninjauan Naskah. */
     public const REVIEW_STATUSES = ['ditinjau', 'menunggu_keputusan'];
 
+    /** Keputusan administrasi awal (Naskah Baru) -> status naskah. Terima = lanjut ke tahap review. */
+    public const INITIAL_DECISION_STATUS = [
+        'diterima' => 'ditinjau',
+        'ditolak'  => 'ditolak',
+    ];
+
     /** Keputusan editorial akhir -> status naskah. */
     public const DECISION_STATUS = [
         'diterima' => 'disetujui',

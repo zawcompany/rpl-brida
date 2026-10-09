@@ -9,6 +9,7 @@ use App\Models\ResearchField;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class DatabaseSeeder extends Seeder
 {
@@ -50,18 +51,13 @@ class DatabaseSeeder extends Seeder
         // ------------------------------------------------------------------
         // 2. Bidang Penelitian
         // ------------------------------------------------------------------
-        $fields = [
-            ['name' => 'Ilmu Komputer',         'slug' => 'ilmu-komputer'],
-            ['name' => 'Teknik Informatika',     'slug' => 'teknik-informatika'],
-            ['name' => 'Sistem Informasi',       'slug' => 'sistem-informasi'],
-            ['name' => 'Kecerdasan Buatan',      'slug' => 'kecerdasan-buatan'],
-            ['name' => 'Keamanan Siber',         'slug' => 'keamanan-siber'],
-        ];
+        $this->call(ResearchFieldSeeder::class);
 
-        $createdFields = [];
-        foreach ($fields as $f) {
-            $createdFields[] = ResearchField::updateOrCreate(['slug' => $f['slug']], $f);
-        }
+        // Data contoh di bawah merujuk 5 bidang pertama (urutan tetap di ResearchFieldSeeder::FIELDS).
+        $createdFields = array_map(
+            fn (string $name) => ResearchField::where('slug', Str::slug($name))->firstOrFail(),
+            array_slice(ResearchFieldSeeder::FIELDS, 0, 5)
+        );
 
         // ------------------------------------------------------------------
         // 3. Reviewer Qualifications (pivot)

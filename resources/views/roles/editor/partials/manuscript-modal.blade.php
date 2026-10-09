@@ -47,8 +47,8 @@
                 <select id="m-decision" x-model="form.decision"
                         class="w-full text-sm border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-red-500 focus:border-red-500 bg-white">
                     <option value="">— Pilih Keputusan —</option>
-                    <option value="ditinjau">Lanjut ke Review</option>
-                    <option value="ditolak">Tolak di Tempat</option>
+                    <option value="diterima">Terima (lanjut ke review)</option>
+                    <option value="ditolak">Tolak</option>
                 </select>
             </div>
         </form>
@@ -80,16 +80,16 @@ function manuscriptModal() {
             this.openModal(this.detailUrl.replace('__ID__', id));
         },
 
-        // "Gunakan Rekomendasi Ini": isi dropdown reviewer + pilih "Lanjut ke Review".
+        // "Gunakan Rekomendasi Ini": isi dropdown reviewer + pilih "Terima".
         useRecommendation() {
             this.form.reviewer_id = this.detail.recommendation.id;
-            this.form.decision = 'ditinjau';
+            this.form.decision = 'diterima';
         },
 
         save() {
             this.errorMsg = '';
             if (!this.form.decision) { this.errorMsg = 'Pilih keputusan administrasi terlebih dahulu.'; return; }
-            if (this.form.decision === 'ditinjau' && !this.form.reviewer_id) {
+            if (this.form.decision === 'diterima' && !this.form.reviewer_id) {
                 this.errorMsg = 'Pilih reviewer untuk meneruskan naskah ke tahap review.';
                 return;
             }

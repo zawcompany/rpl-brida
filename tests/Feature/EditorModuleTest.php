@@ -160,7 +160,7 @@ class EditorModuleTest extends TestCase
 
         $this->actingAs($this->editor)
             ->postJson("/editor/naskah/{$m->id}/assign", [
-                'decision' => 'ditinjau', 'reviewer_id' => $reviewer->id, 'editor_note' => 'Mohon segera.',
+                'decision' => 'diterima', 'reviewer_id' => $reviewer->id, 'editor_note' => 'Mohon segera.',
             ])->assertOk()->assertJson(['success' => true]);
 
         $this->assertSame('ditinjau', $m->fresh()->status);
@@ -174,7 +174,7 @@ class EditorModuleTest extends TestCase
         $m = $this->makeManuscript('pending');
 
         $this->actingAs($this->editor)
-            ->postJson("/editor/naskah/{$m->id}/assign", ['decision' => 'ditinjau'])
+            ->postJson("/editor/naskah/{$m->id}/assign", ['decision' => 'diterima'])
             ->assertStatus(422)->assertJsonValidationErrors('reviewer_id');
     }
 
@@ -411,20 +411,20 @@ class EditorModuleTest extends TestCase
 
         $default = $this->makeManuscript('pending');
         $this->actingAs($this->editor)->postJson("/editor/naskah/{$default->id}/assign", [
-            'decision' => 'ditinjau', 'reviewer_id' => $reviewer->id,
+            'decision' => 'diterima', 'reviewer_id' => $reviewer->id,
         ])->assertOk();
         $this->assertTrue($default->currentReview()->first()->due_at->isSameDay(now()->addDays(14)));
 
         $custom = $this->makeManuscript('pending');
         $due = now()->addDays(30)->toDateString();
         $this->actingAs($this->editor)->postJson("/editor/naskah/{$custom->id}/assign", [
-            'decision' => 'ditinjau', 'reviewer_id' => $reviewer->id, 'due_at' => $due,
+            'decision' => 'diterima', 'reviewer_id' => $reviewer->id, 'due_at' => $due,
         ])->assertOk();
         $this->assertSame($due, $custom->currentReview()->first()->due_at->toDateString());
 
         $past = $this->makeManuscript('pending');
         $this->actingAs($this->editor)->postJson("/editor/naskah/{$past->id}/assign", [
-            'decision' => 'ditinjau', 'reviewer_id' => $reviewer->id, 'due_at' => now()->subDay()->toDateString(),
+            'decision' => 'diterima', 'reviewer_id' => $reviewer->id, 'due_at' => now()->subDay()->toDateString(),
         ])->assertStatus(422)->assertJsonValidationErrors('due_at');
 
         $this->actingAs($this->editor)->getJson("/editor/naskah/{$this->makeManuscript('pending')->id}/detail")

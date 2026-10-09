@@ -1,6 +1,6 @@
 {{--
     JavaScript bersama modul editor (dimuat sekali per halaman via @once):
-      - editorApi()      : fetch JSON + CSRF + penanganan error validasi
+      - editorApi()      : fetch JSON/FormData + CSRF + error validasi + sesi berakhir (401/419 -> /login)
       - editorModal()    : state dasar modal (buka, muat detail, submit, tutup)
       - dataTable()      : tabel interaktif (live search, filter, pagination AJAX)
       - openEditorModal(): membuka modal dari tombol di baris tabel
@@ -14,13 +14,23 @@ window.editorApi = async function (url, { method = 'GET', body = null } = {}) {
         'Accept': 'application/json',
         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
     };
-    if (body) headers['Content-Type'] = 'application/json';
+    // FormData (unggah berkas) dikirim apa adanya agar browser mengatur boundary multipart.
+    const isForm = body instanceof FormData;
+    if (body && !isForm) headers['Content-Type'] = 'application/json';
 
-    const res = await fetch(url, { method, headers, body: body ? JSON.stringify(body) : null });
+    const res = await fetch(url, { method, headers, body: body ? (isForm ? body : JSON.stringify(body)) : null });
     let data = {};
     try { data = await res.json(); } catch (e) { /* respons non-JSON */ }
 
     if (!res.ok) {
+        // Sesi/token CSRF kedaluwarsa (mis. tab lama dibuka kembali): alihkan ke login, bukan error mentah.
+        if (res.status === 401 || res.status === 419) {
+            window.location.assign(data.redirect || '/login');
+            throw new Error(data.message || 'Sesi Anda telah berakhir. Mengalihkan ke halaman masuk...');
+        }
+        if (res.status === 403) {
+            throw new Error('Anda tidak memiliki akses untuk tindakan ini. Bila Anda berganti akun di tab lain, muat ulang halaman.');
+        }
         const firstError = data.errors ? Object.values(data.errors)[0]?.[0] : null;
         throw new Error(firstError || data.message || 'Terjadi kesalahan. Coba lagi.');
     }
