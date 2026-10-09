@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Author;
 
 use App\Models\Manuscript;
+use App\Rules\SafeDocument;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UploadRevisionRequest extends FormRequest
@@ -18,7 +19,7 @@ class UploadRevisionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'revision_file'   => ['required', 'file', 'mimes:pdf,docx', 'max:10240'],
+            'revision_file'   => ['required', 'file', new SafeDocument(['pdf', 'docx']), 'max:' . config('simpil.upload.manuscript_kb')],
             'author_response' => ['required', 'string', 'min:10', 'max:5000'],
         ];
     }
@@ -35,7 +36,6 @@ class UploadRevisionRequest extends FormRequest
     {
         return [
             'required'              => ':attribute wajib diisi.',
-            'revision_file.mimes'   => 'Berkas revisi harus berformat PDF atau DOCX.',
             'revision_file.max'     => 'Ukuran berkas revisi maksimal 10 MB.',
             'revision_file.uploaded' => 'Berkas gagal diunggah. Pastikan ukurannya tidak melebihi 10 MB.',
             'author_response.min'   => 'Catatan tanggapan minimal :min karakter; jelaskan perbaikan yang dilakukan.',

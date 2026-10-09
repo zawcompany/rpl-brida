@@ -4,11 +4,11 @@ namespace App\Services;
 
 use App\Models\Issue;
 use App\Models\Manuscript;
+use App\Services\Files\ManuscriptFileStore;
 use DomainException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * IssueService — kelola edisi jurnal, penetapan naskah, dan publikasi.
@@ -16,7 +16,9 @@ use Illuminate\Support\Facades\Storage;
  */
 class IssueService
 {
-    private const DISK = 'public';
+    public function __construct(private readonly ManuscriptFileStore $files)
+    {
+    }
 
     // -------------------------------------------------------------------------
     // Edisi
@@ -92,7 +94,7 @@ class IssueService
         }
 
         $oldPath = $manuscript->final_file_path;
-        $path    = $finalFile->store("issues/{$issue->id}", self::DISK);
+        $path    = $this->files->put($finalFile, "issues/{$issue->id}");
 
         $manuscript->update([
             'issue_id'            => $issue->id,
@@ -100,9 +102,7 @@ class IssueService
             'final_original_name' => $finalFile->getClientOriginalName(),
         ]);
 
-        if ($oldPath) {
-            Storage::disk(self::DISK)->delete($oldPath);
-        }
+        $this->files->delete($oldPath);
 
         return $manuscript;
     }
@@ -116,9 +116,7 @@ class IssueService
             throw new DomainException('Naskah ini tidak berada pada edisi tersebut.');
         }
 
-        if ($manuscript->final_file_path) {
-            Storage::disk(self::DISK)->delete($manuscript->final_file_path);
-        }
+        $this->files->delete($manuscript->final_file_path);
 
         $manuscript->update([
             'issue_id'            => null,

@@ -12,7 +12,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Controller tipis: validasi (FormRequest) -> panggil AuthorService -> kembalikan respons.
@@ -79,17 +78,6 @@ class AuthorController extends Controller
             'manuscript' => AuthorManuscriptResource::make($manuscript)->resolve(),
             'timeline'   => $this->authorService->buildTimeline($manuscript),
         ]);
-    }
-
-    public function download(Request $request, Manuscript $manuscript, string $type): StreamedResponse
-    {
-        $this->authorizeOwner($request, $manuscript);
-        abort_unless(in_array($type, ['original', 'revision'], true), 404);
-
-        $file = $this->authorService->resolveDownload($manuscript, $type);
-        abort_if($file === null, 404, 'Berkas tidak ditemukan.');
-
-        return $this->authorService->disk()->download($file['path'], $file['name']);
     }
 
     // ------------------------------------------------------------------ Hasil Review & Revisi

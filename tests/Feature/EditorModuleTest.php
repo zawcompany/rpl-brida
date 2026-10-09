@@ -13,11 +13,12 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
+use Tests\Concerns\MakesDocuments;
 use Tests\TestCase;
 
 class EditorModuleTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, MakesDocuments;
 
     private User $editor;
     private User $author;
@@ -159,7 +160,7 @@ class EditorModuleTest extends TestCase
 
         $this->actingAs($this->editor)
             ->postJson("/editor/naskah/{$m->id}/assign", [
-                'decision' => 'ditinjau', 'reviewer_id' => $reviewer->id, 'editor_note' => 'Mohon segera.',
+                'decision' => 'diterima', 'reviewer_id' => $reviewer->id, 'editor_note' => 'Mohon segera.',
             ])->assertOk()->assertJson(['success' => true]);
 
         $this->assertSame('ditinjau', $m->fresh()->status);
@@ -173,7 +174,7 @@ class EditorModuleTest extends TestCase
         $m = $this->makeManuscript('pending');
 
         $this->actingAs($this->editor)
-            ->postJson("/editor/naskah/{$m->id}/assign", ['decision' => 'ditinjau'])
+            ->postJson("/editor/naskah/{$m->id}/assign", ['decision' => 'diterima'])
             ->assertStatus(422)->assertJsonValidationErrors('reviewer_id');
     }
 
@@ -314,7 +315,7 @@ class EditorModuleTest extends TestCase
 
     public function test_alur_edisi_dari_pembuatan_hingga_publikasi(): void
     {
-        Storage::fake('public');
+        Storage::fake('local');
         $this->actingAs($this->editor);
 
         $this->post('/editor/edisi', ['volume' => 1, 'number' => 2, 'year' => 2026, 'title' => 'Edisi Khusus'])
@@ -331,7 +332,7 @@ class EditorModuleTest extends TestCase
         // naskah belum disetujui tidak boleh ditambahkan
         $this->post("/editor/edisi/{$issue->id}/naskah", [
             'manuscript_id' => $pending->id,
-            'final_file'    => UploadedFile::fake()->create('final.pdf', 100, 'application/pdf'),
+            'final_file'    => $this->pdf('final.pdf'),
         ])->assertSessionHas('error');
         $this->assertNull($pending->fresh()->issue_id);
 
@@ -347,12 +348,12 @@ class EditorModuleTest extends TestCase
 
         $this->post("/editor/edisi/{$issue->id}/naskah", [
             'manuscript_id' => $approved->id,
-            'final_file'    => UploadedFile::fake()->create('final.pdf', 100, 'application/pdf'),
+            'final_file'    => $this->pdf('final.pdf'),
         ])->assertSessionHas('success');
 
         $approved->refresh();
         $this->assertSame($issue->id, $approved->issue_id);
-        Storage::disk('public')->assertExists($approved->final_file_path);
+        Storage::disk('local')->assertExists($approved->final_file_path);
 
         $this->post("/editor/edisi/{$issue->id}/publikasi")->assertSessionHas('success');
 
@@ -410,20 +411,20 @@ class EditorModuleTest extends TestCase
 
         $default = $this->makeManuscript('pending');
         $this->actingAs($this->editor)->postJson("/editor/naskah/{$default->id}/assign", [
-            'decision' => 'ditinjau', 'reviewer_id' => $reviewer->id,
+            'decision' => 'diterima', 'reviewer_id' => $reviewer->id,
         ])->assertOk();
         $this->assertTrue($default->currentReview()->first()->due_at->isSameDay(now()->addDays(14)));
 
         $custom = $this->makeManuscript('pending');
         $due = now()->addDays(30)->toDateString();
         $this->actingAs($this->editor)->postJson("/editor/naskah/{$custom->id}/assign", [
-            'decision' => 'ditinjau', 'reviewer_id' => $reviewer->id, 'due_at' => $due,
+            'decision' => 'diterima', 'reviewer_id' => $reviewer->id, 'due_at' => $due,
         ])->assertOk();
         $this->assertSame($due, $custom->currentReview()->first()->due_at->toDateString());
 
         $past = $this->makeManuscript('pending');
         $this->actingAs($this->editor)->postJson("/editor/naskah/{$past->id}/assign", [
-            'decision' => 'ditinjau', 'reviewer_id' => $reviewer->id, 'due_at' => now()->subDay()->toDateString(),
+            'decision' => 'diterima', 'reviewer_id' => $reviewer->id, 'due_at' => now()->subDay()->toDateString(),
         ])->assertStatus(422)->assertJsonValidationErrors('due_at');
 
         $this->actingAs($this->editor)->getJson("/editor/naskah/{$this->makeManuscript('pending')->id}/detail")

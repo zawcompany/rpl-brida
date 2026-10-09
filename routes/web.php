@@ -4,9 +4,13 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AuthorController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DevLoginController;
+use App\Http\Controllers\ManuscriptFileController;
 use App\Http\Controllers\EditorController;
 use App\Http\Controllers\IssueController;
 use App\Http\Controllers\ReviewerDirectoryController;
+use App\Http\Controllers\ReviewerController;
 
 /*
 |--------------------------------------------------------------------------
@@ -15,7 +19,7 @@ use App\Http\Controllers\ReviewerDirectoryController;
 */
 
 // 1. Landing page
-Route::get('/', fn() => view('landing'));
+Route::view('/', 'landing');
 
 // 1A. READER — publik, tidak perlu login
 Route::get('/reader', function () {
@@ -101,38 +105,19 @@ Route::get('/reader/artikel/{id}', function ($id) {
 // 2. Auth routes — GET untuk form, POST untuk proses
 Route::middleware('guest')->group(function () {
     Route::get('/login',     [AuthController::class, 'showLogin'])->name('login');
-    Route::post('/login',    [AuthController::class, 'login']);
+    Route::post('/login',    [AuthController::class, 'login'])->middleware('throttle:5,1');
     Route::get('/register',  [AuthController::class, 'showRegister'])->name('register');
-    Route::post('/register', [AuthController::class, 'register']);
+    Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:10,1');
 });
 
 // 3. Dashboard berbasis role — hanya untuk user terautentikasi
-Route::get('/dashboard', function () {
-    $roleViews = [
-        'Administrator' => 'roles.admin.dashboard',
-        'Reviewer'      => 'roles.reviewer.dashboard',
-        'Author'        => 'roles.author.dashboard',
-    ];
+Route::get('/dashboard', DashboardController::class)->middleware('auth')->name('dashboard');
 
-    // Editor diarahkan ke EditorController@dashboard (data dinamis)
-    if (auth()->user()->role === 'Editor') {
-        return app(EditorController::class)->dashboard();
-    }
-
-    // Administrator diarahkan ke AdminController@dashboard (statistik & audit log)
-    if (auth()->user()->role === 'Administrator') {
-        return app(AdminController::class)->dashboard();
-    }
-
-    // Author diarahkan ke AuthorController@dashboard (statistik & naskah terbaru)
-    if (auth()->user()->role === 'Author') {
-        return app(AuthorController::class)->dashboard(request());
-    }
-
-    $role = auth()->user()->role;
-    $view = $roleViews[$role] ?? $roleViews['Author'];
-    return view($view);
-})->middleware('auth')->name('dashboard');
+// 3b. Berkas naskah/revisi/final: disk privat, akses via auth + ManuscriptPolicy (SRS NF-04)
+Route::get('/berkas/{manuscript}/{type}', [ManuscriptFileController::class, 'show'])
+    ->whereIn('type', ['original', 'revision', 'final'])
+    ->middleware('auth')
+    ->name('files.manuscript');
 
 // 4. Logout
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
@@ -186,10 +171,9 @@ Route::middleware(['auth', 'role:author'])->prefix('author')->as('author.')->gro
     Route::get('/naskah-baru', [AuthorController::class, 'create'])->name('manuscripts.create');
     Route::post('/naskah-baru', [AuthorController::class, 'store'])->name('manuscripts.store');
 
-    // Naskah Saya (tabel AJAX + modal tracking + unduh berkas)
+    // Naskah Saya (tabel AJAX + modal tracking)
     Route::get('/naskah-saya', [AuthorController::class, 'index'])->name('manuscripts.index');
     Route::get('/naskah/{manuscript}/detail', [AuthorController::class, 'show'])->name('manuscripts.show');
-    Route::get('/naskah/{manuscript}/unduh/{type}', [AuthorController::class, 'download'])->name('manuscripts.download');
 
     // Hasil Review & Revisi
     Route::get('/revisi', [AuthorController::class, 'revisions'])->name('revisions.index');
@@ -221,18 +205,51 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->as('admin.')->group(
     Route::put('/profil', [AdminController::class, 'updateProfile'])->name('profile.update');
 });
 
-// 7. Dev-mode shortcut (hapus di production)
-Route::get('/dev-login/{role}', function (string $role) {
-    $allowed = ['Administrator', 'Editor', 'Author', 'Reviewer'];
-    abort_unless(in_array($role, $allowed), 404);
+// 7. Dev-mode shortcut — hanya terdaftar saat APP_ENV=local
+if (app()->environment('local')) {
+    Route::get('/dev-login/{role}', DevLoginController::class)
+        ->name('dev.login');
+}
 
-    $user = \App\Models\User::updateOrCreate(
-        ['email' => strtolower($role) . '@brida.com'],
-        ['name' => 'Akun Tes ' . $role, 'password' => bcrypt('password123'), 'role' => $role]
-    );
+/*
+|--------------------------------------------------------------------------
+| REVIEWER MODULE — dilindungi auth + role:reviewer
+|--------------------------------------------------------------------------
+*/
 
-    auth()->login($user);
-    request()->session()->regenerate();
+Route::middleware(['auth', 'role:reviewer'])
+    ->prefix('reviewer')
+    ->as('reviewer.')
+    ->group(function () {
 
-    return redirect()->route('dashboard');
-});
+        // Daftar naskah yang ditugaskan
+        Route::get(
+            '/naskah-ditugaskan',
+            [ReviewerController::class, 'index']
+        )->name('manuscripts.index');
+
+        // Form review naskah
+        Route::get(
+            '/naskah-ditugaskan/{id}/review',
+            [ReviewerController::class, 'show']
+        )->name('review-detail');
+
+        // Daftar naskah yang selesai direview
+        Route::get(
+            '/naskah-selesai',
+            [ReviewerController::class, 'completed']
+        )->name('manuscripts-selesai');
+
+        // Profil reviewer
+        Route::get('/profil', function () {
+            return view('roles.reviewer.profile');
+        })->name('profile');
+
+    });
+
+=======
+// 7. Dev-mode shortcut — hanya terdaftar saat APP_ENV=local (tidak ada di produksi / route:cache produksi)
+if (app()->environment('local')) {
+    Route::get('/dev-login/{role}', DevLoginController::class)->name('dev.login');
+}
+>>>>>>> origin/main

@@ -193,7 +193,8 @@ class EditorService
     // -------------------------------------------------------------------------
 
     /**
-     * 'ditinjau' => teruskan ke reviewer (buat penugasan); 'ditolak' => tolak di tempat.
+     * 'diterima' => naskah lanjut ke tahap review (buat penugasan reviewer); 'ditolak' => naskah ditolak.
+     * Pemetaan keputusan -> status ada di Manuscript::INITIAL_DECISION_STATUS.
      *
      * @throws DomainException bila naskah sudah diproses
      */
@@ -209,16 +210,15 @@ class EditorService
 
         return DB::transaction(function () use ($manuscript, $decision, $reviewerId, $editorNote, $editorId, $dueAt) {
             $manuscript->editor_note = $editorNote;
+            $manuscript->status      = Manuscript::INITIAL_DECISION_STATUS[$decision];
 
-            if ($decision === 'ditolak') {
-                $manuscript->status     = 'ditolak';
+            if ($manuscript->status === 'ditolak') {
                 $manuscript->decided_at = now();
                 $manuscript->save();
 
                 return $manuscript;
             }
 
-            $manuscript->status = 'ditinjau';
             $manuscript->save();
 
             $this->assignReview($manuscript, $reviewerId, $editorId, $dueAt);

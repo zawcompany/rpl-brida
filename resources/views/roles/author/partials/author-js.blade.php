@@ -2,7 +2,7 @@
     JavaScript modul author (dimuat sekali per halaman via @once). Melengkapi helper bersama editor-js
     (editorApi, editorModal, dataTable, openEditorModal) tanpa mengubahnya:
       - authorTable()  : dataTable bersama + filter status
-      - authorUpload() : POST multipart (unggah berkas) dengan penanganan error validasi
+      - authorUpload() : POST multipart (unggah berkas) via editorApi
 --}}
 @include('roles.editor.partials.editor-js')
 
@@ -48,24 +48,9 @@ window.authorTable = function (cfg) {
     return table;
 };
 
-window.authorUpload = async function (url, formData) {
-    const res = await fetch(url, {
-        method: 'POST',
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest',
-            'Accept': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
-        },
-        body: formData,
-    });
-    let data = {};
-    try { data = await res.json(); } catch (e) { /* respons non-JSON (mis. 413) */ }
-
-    if (!res.ok) {
-        const firstError = data.errors ? Object.values(data.errors)[0]?.[0] : null;
-        throw new Error(firstError || data.message || 'Gagal mengunggah. Periksa ukuran berkas (maks. 10 MB).');
-    }
-    return data;
+// Unggah berkas = editorApi dengan FormData (CSRF, 401/419, dan error validasi ditangani di sana).
+window.authorUpload = function (url, formData) {
+    return window.editorApi(url, { method: 'POST', body: formData });
 };
 </script>
 @endpush

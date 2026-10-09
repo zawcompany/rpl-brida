@@ -3,14 +3,18 @@
 namespace App\Notifications;
 
 use App\Models\Review;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 /**
  * Pengingat dari editor kepada reviewer agar segera merespon / menyelesaikan review.
  */
-class ReviewReminderNotification extends Notification
+class ReviewReminderNotification extends Notification implements ShouldQueue
 {
+    use Queueable;
+
     public function __construct(private readonly Review $review)
     {
     }

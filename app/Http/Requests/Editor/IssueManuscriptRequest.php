@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Editor;
 
+use App\Rules\SafeDocument;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -18,7 +19,7 @@ class IssueManuscriptRequest extends FormRequest
     {
         return [
             'manuscript_id' => ['required', 'exists:manuscripts,id'],
-            'final_file'    => ['required', 'file', 'mimes:pdf', 'max:20480'],
+            'final_file'    => ['required', 'file', new SafeDocument(['pdf']), 'max:' . config('simpil.upload.final_kb')],
         ];
     }
 
@@ -27,7 +28,6 @@ class IssueManuscriptRequest extends FormRequest
         return [
             'manuscript_id.required' => 'Pilih naskah yang akan ditambahkan.',
             'final_file.required'    => 'Berkas PDF final (camera-ready) wajib diunggah.',
-            'final_file.mimes'       => 'Berkas final harus berformat PDF.',
             'final_file.max'         => 'Ukuran berkas final maksimal 20 MB.',
         ];
     }
