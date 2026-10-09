@@ -10,7 +10,7 @@ use App\Notifications\WorkflowNotification;
 use App\Services\AuthorService;
 use App\Services\EditorService;
 use App\Services\NotificationService;
-use Illuminate\Auth\Notifications\VerifyEmail;
+use App\Notifications\QueuedVerifyEmail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
@@ -149,7 +149,7 @@ class ProfileAndNotificationTest extends TestCase
         $this->assertFalse($user->hasVerifiedEmail());
 
         $this->actingAs($user)->post(route('verification.send'))->assertRedirect(route('profile.show'));
-        Notification::assertSentTo($user, VerifyEmail::class);
+        Notification::assertSentTo($user, QueuedVerifyEmail::class);
 
         $url = URL::temporarySignedRoute('verification.verify', now()->addMinutes(60), ['id' => $user->id, 'hash' => sha1($user->email)]);
         $this->get($url)->assertRedirect(route('profile.show'));
@@ -183,7 +183,7 @@ class ProfileAndNotificationTest extends TestCase
         $user->refresh();
         $this->assertSame('baru@t.test', $user->email); // dinormalkan
         $this->assertNull($user->email_verified_at);
-        Notification::assertSentTo($user, VerifyEmail::class);
+        Notification::assertSentTo($user, QueuedVerifyEmail::class);
     }
 
     // ------------------------------------------------------------ notifikasi

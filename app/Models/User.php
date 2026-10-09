@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Database\Factories\UserFactory;
+use App\Notifications\QueuedVerifyEmail;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -81,6 +82,12 @@ class User extends Authenticatable implements MustVerifyEmail
                 auth()->id() ?? $user->id
             );
         });
+    }
+
+    /** Email verifikasi dikirim lewat antrean (tidak memblokir request). */
+    public function sendEmailVerificationNotification(): void
+    {
+        $this->notify(new QueuedVerifyEmail());
     }
 
     public function getRoleLabelAttribute(): string
