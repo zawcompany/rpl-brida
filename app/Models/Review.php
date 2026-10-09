@@ -31,6 +31,8 @@ class Review extends Model
         'assigned_by',
         'comments',
         'recommendation',
+        'relevansi_topik',
+        'metodologi_penelitian',
         'status',
         'due_at',
         'completed_at',
