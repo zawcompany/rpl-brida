@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Editor;
 
+use App\Models\Manuscript;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -18,7 +19,8 @@ class ReReviewRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'reviewer_id' => ['required', Rule::exists('users', 'id')->where('role', 'Reviewer')],
+            'reviewer_ids'   => ['required', 'array', 'size:' . Manuscript::REQUIRED_REVIEWERS],
+            'reviewer_ids.*' => ['distinct', Rule::exists('users', 'id')->where('role', 'Reviewer')],
             'due_at'      => ['nullable', 'date', 'after_or_equal:today'],
             'editor_note' => ['nullable', 'string', 'max:2000'],
         ];
@@ -28,8 +30,10 @@ class ReReviewRequest extends FormRequest
     {
         return [
             'due_at.after_or_equal'   => 'Tenggat waktu tidak boleh sebelum hari ini.',
-            'reviewer_id.required' => 'Pilih reviewer untuk review ulang.',
-            'reviewer_id.exists'   => 'Reviewer yang dipilih tidak ditemukan.',
+            'reviewer_ids.required' => 'Pilih ' . Manuscript::REQUIRED_REVIEWERS . ' reviewer untuk review ulang.',
+            'reviewer_ids.size'     => 'Review ulang harus dilakukan oleh tepat ' . Manuscript::REQUIRED_REVIEWERS . ' reviewer.',
+            'reviewer_ids.*.distinct' => 'Reviewer yang dipilih tidak boleh sama.',
+            'reviewer_ids.*.exists' => 'Reviewer yang dipilih tidak ditemukan.',
         ];
     }
 }

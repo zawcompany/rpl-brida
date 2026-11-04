@@ -20,11 +20,9 @@ class AssignReviewerRequest extends FormRequest
     {
         return [
             'decision'    => ['required', Rule::in(array_keys(Manuscript::INITIAL_DECISION_STATUS))],
-            'reviewer_id' => [
-                'required_if:decision,diterima',
-                'nullable',
-                Rule::exists('users', 'id')->where('role', 'Reviewer'),
-            ],
+            // Tepat 3 reviewer berbeda (blind review) bila naskah diterima untuk direview.
+            'reviewer_ids'   => ['required_if:decision,diterima', 'nullable', 'array', 'size:' . Manuscript::REQUIRED_REVIEWERS],
+            'reviewer_ids.*' => ['distinct', Rule::exists('users', 'id')->where('role', 'Reviewer')],
             'due_at'      => ['nullable', 'date', 'after_or_equal:today'],
             'editor_note' => ['nullable', 'string', 'max:2000'],
         ];
@@ -36,8 +34,10 @@ class AssignReviewerRequest extends FormRequest
             'due_at.after_or_equal'   => 'Tenggat waktu tidak boleh sebelum hari ini.',
             'decision.required'       => 'Keputusan administrasi wajib dipilih.',
             'decision.in'             => 'Keputusan tidak valid.',
-            'reviewer_id.required_if' => 'Reviewer wajib dipilih ketika naskah diterima untuk direview.',
-            'reviewer_id.exists'      => 'Reviewer yang dipilih tidak ditemukan.',
+            'reviewer_ids.required_if' => 'Tiga reviewer wajib dipilih ketika naskah diterima untuk direview.',
+            'reviewer_ids.size'       => 'Naskah harus direview oleh tepat ' . Manuscript::REQUIRED_REVIEWERS . ' reviewer.',
+            'reviewer_ids.*.distinct' => 'Reviewer yang dipilih tidak boleh sama.',
+            'reviewer_ids.*.exists'   => 'Reviewer yang dipilih tidak ditemukan.',
         ];
     }
 }

@@ -57,7 +57,7 @@ class ReviewerReviewResource extends JsonResource
             'can' => [
                 'respond' => $this->superseded_at === null && $this->status === 'ditugaskan',
                 'submit'  => $this->superseded_at === null && $this->isActive() && $m->status === 'ditinjau',
-                'edit'    => $this->superseded_at === null && $this->status === 'selesai' && $m->status === 'menunggu_keputusan',
+                'edit'    => $this->superseded_at === null && $this->status === 'selesai' && in_array($m->status, ['ditinjau', 'menunggu_keputusan'], true),
             ],
 
             'rubric'          => collect(Review::RUBRIC)->map(fn (string $label, string $key) => ['key' => $key, 'label' => $label])->values()->all(),

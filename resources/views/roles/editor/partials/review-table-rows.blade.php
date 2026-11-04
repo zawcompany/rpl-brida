@@ -1,12 +1,14 @@
 {{-- Baris tabel Peninjauan Naskah. Prop: $rows --}}
 @forelse ($rows as $manuscript)
-@php $review = $manuscript->currentReview; @endphp
+@php $progress = $manuscript->review_progress; @endphp
 <tr class="hover:bg-gray-50/60 transition-colors">
     @include('roles.editor.partials.manuscript-cells', ['manuscript' => $manuscript])
     <td class="px-6 py-4 whitespace-nowrap">
-        @if ($review)
-            <x-editor.badge :color="$review->status_badge_class">{{ $review->status_label }}</x-editor.badge>
-            @if ($review->isOverdue())
+        @if ($manuscript->currentReviews->isNotEmpty())
+            <x-editor.badge :color="$progress['complete'] ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'">
+                {{ $progress['done'] }}/{{ $progress['required'] }} selesai
+            </x-editor.badge>
+            @if ($manuscript->currentReviews->contains(fn ($r) => $r->isOverdue()))
                 <x-editor.badge color="bg-red-50 text-red-600" class="ml-1">Terlambat</x-editor.badge>
             @endif
         @else

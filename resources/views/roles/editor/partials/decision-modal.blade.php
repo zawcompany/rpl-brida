@@ -5,15 +5,24 @@
     <x-editor.modal title="Keputusan Editorial" subtitle="Rekapitulasi review dan keputusan akhir">
         @include('roles.editor.partials.manuscript-info')
 
-        {{-- Rekapitulasi penilaian reviewer --}}
+        {{-- Rekapitulasi penilaian reviewer (tampil lengkap setelah ke-3 reviewer selesai) --}}
         <div>
-            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Penilaian Reviewer</p>
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Penilaian Reviewer</p>
+                <p class="text-xs font-medium text-gray-600" x-text="detail?.progress?.label"></p>
+            </div>
+            <div class="flex flex-wrap gap-1.5 mb-3" x-show="(detail?.summary ?? []).length">
+                <template x-for="s in detail?.summary ?? []" :key="s.label">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                          :class="s.class" x-text="`${s.label} ×${s.count}`"></span>
+                </template>
+            </div>
             <div class="space-y-3">
-                <template x-for="r in detail?.reviews ?? []" :key="r.id">
+                <template x-for="(r, i) in detail?.reviews ?? []" :key="r.id">
                     <div class="rounded-xl border border-gray-200 p-4">
                         <div class="flex flex-wrap items-center justify-between gap-2">
                             <div>
-                                <p class="text-sm font-medium text-gray-800" x-text="r.reviewer_name"></p>
+                                <p class="text-sm font-medium text-gray-800" x-text="`Reviewer ${i + 1} — ${r.reviewer_name}`"></p>
                                 <p class="text-xs text-gray-400">Selesai <span x-text="r.completed_at ?? '—'"></span></p>
                             </div>
                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
@@ -65,16 +74,18 @@
         {{-- Panel review ulang --}}
         <div x-show="mode === 'rereview'" class="space-y-4">
             @include('roles.editor.partials.recommendation-box')
-            <div>
-                <label class="block text-xs font-semibold text-gray-600 mb-1.5" for="d-reviewer">Reviewer</label>
-                <select id="d-reviewer" x-model="form.reviewer_id"
-                        class="w-full text-sm border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-red-500 focus:border-red-500 bg-white">
-                    <option value="">— Pilih Reviewer —</option>
-                    <template x-for="r in detail?.reviewers ?? []" :key="r.id">
-                        <option :value="r.id" x-text="`${r.name} (${r.active_load} naskah aktif)`"></option>
-                    </template>
-                </select>
-            </div>
+            <template x-for="i in [0, 1, 2]" :key="i">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1.5" :for="`d-reviewer-${i}`" x-text="`Reviewer ${i + 1}`"></label>
+                    <select :id="`d-reviewer-${i}`" x-model="form.reviewer_ids[i]"
+                            class="w-full text-sm border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-red-500 focus:border-red-500 bg-white">
+                        <option value="">— Pilih Reviewer —</option>
+                        <template x-for="r in detail?.reviewers ?? []" :key="r.id">
+                            <option :value="String(r.id)" x-text="`${r.name} (${r.active_load} naskah aktif)`"></option>
+                        </template>
+                    </select>
+                </div>
+            </template>
             <div>
                 <label class="block text-xs font-semibold text-gray-600 mb-1.5" for="d-due">
                     Tenggat Review <span class="font-normal text-gray-400">(default 14 hari, dapat diubah)</span>
@@ -98,7 +109,8 @@
                         class="w-full text-sm border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-red-500 focus:border-red-500 bg-white">
                     <option value="">— Pilih Keputusan —</option>
                     <option value="diterima">Diterima (status: Disetujui)</option>
-                    <option value="revisi">Minta Revisi (status: Perlu Revisi)</option>
+                    <option value="revisi_minor">Revisi Minor (dikembalikan ke author)</option>
+                    <option value="revisi_mayor">Revisi Mayor (dikembalikan ke author)</option>
                     <option value="ditolak">Ditolak (status: Ditolak)</option>
                 </select>
             </div>
@@ -130,25 +142,25 @@ function decisionModal() {
         manuscriptId: null,
         mode: 'direct',
         rereviewUrl: @js(route('editor.decisions.rereview', '__ID__')),
-        form: { decision: '', editorial_note: '', reviewer_id: '', due_at: '', editor_note: '' },
+        form: { decision: '', editorial_note: '', reviewer_ids: ['', '', ''], due_at: '', editor_note: '' },
 
         onLoaded(d) { this.form.due_at = d.default_due_at; },
 
-        useRecommendation() { this.form.reviewer_id = this.detail.recommendation.id; },
+        useRecommendation() { this.form.reviewer_ids = [0, 1, 2].map(i => String(this.detail.recommendations[i]?.id ?? '')); },
 
         open(id) {
             this.manuscriptId = id;
             this.mode = 'direct';
-            this.form = { decision: '', editorial_note: '', reviewer_id: '', due_at: '', editor_note: '' };
+            this.form = { decision: '', editorial_note: '', reviewer_ids: ['', '', ''], due_at: '', editor_note: '' };
             this.openModal(this.detailUrl.replace('__ID__', id));
         },
 
         save() {
             this.errorMsg = '';
             if (this.mode === 'rereview') {
-                if (!this.form.reviewer_id) { this.errorMsg = 'Pilih reviewer untuk review ulang.'; return; }
+                if (!window.allDistinct(this.form.reviewer_ids)) { this.errorMsg = 'Pilih 3 reviewer yang berbeda untuk review ulang.'; return; }
                 this.submit(this.rereviewUrl.replace('__ID__', this.manuscriptId), {
-                    reviewer_id: this.form.reviewer_id, due_at: this.form.due_at, editor_note: this.form.editor_note,
+                    reviewer_ids: this.form.reviewer_ids, due_at: this.form.due_at, editor_note: this.form.editor_note,
                 });
                 return;
             }

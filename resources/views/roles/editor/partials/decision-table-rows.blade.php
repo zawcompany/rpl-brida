@@ -1,11 +1,11 @@
 {{-- Baris tabel Keputusan Editorial. Prop: $rows --}}
 @forelse ($rows as $manuscript)
-@php $review = $manuscript->currentReview; @endphp
+@php $progress = $manuscript->review_progress; @endphp
 <tr class="hover:bg-gray-50/60 transition-colors">
     @include('roles.editor.partials.manuscript-cells', ['manuscript' => $manuscript])
     <td class="px-6 py-4 whitespace-nowrap">
-        @if ($review?->recommendation)
-            <x-editor.badge :color="$review->recommendation_badge_class">{{ $review->recommendation_label }}</x-editor.badge>
+        @if ($manuscript->currentReviews->isNotEmpty())
+            <x-editor.badge color="bg-green-100 text-green-800">{{ $progress['done'] }}/{{ $progress['required'] }} selesai</x-editor.badge>
             @if ($manuscript->isRevision())
                 <x-editor.badge color="bg-blue-50 text-blue-700" class="ml-1">Revisi</x-editor.badge>
             @endif

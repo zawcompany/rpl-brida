@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Manuscript extends Model
 {
@@ -67,11 +66,22 @@ class Manuscript extends Model
         'ditolak'  => 'ditolak',
     ];
 
-    /** Keputusan editorial akhir -> status naskah. */
+    /** Jumlah reviewer anonim yang wajib menyelesaikan review sebelum editor memutuskan. */
+    public const REQUIRED_REVIEWERS = 3;
+
+    /** Keputusan editorial akhir -> status naskah. Revisi minor & mayor sama-sama dikembalikan ke author. */
     public const DECISION_STATUS = [
-        'diterima' => 'disetujui',
-        'revisi'   => 'revisi',
-        'ditolak'  => 'ditolak',
+        'diterima'     => 'disetujui',
+        'revisi_minor' => 'revisi',
+        'revisi_mayor' => 'revisi',
+        'ditolak'      => 'ditolak',
+    ];
+
+    public const DECISION_LABELS = [
+        'diterima'     => 'Diterima',
+        'revisi_minor' => 'Revisi Minor',
+        'revisi_mayor' => 'Revisi Mayor',
+        'ditolak'      => 'Ditolak',
     ];
 
     // -------------------------------------------------------------------------
@@ -98,10 +108,23 @@ class Manuscript extends Model
         return $this->hasMany(Review::class);
     }
 
-    /** Penugasan review terkini (yang belum digantikan reviewer lain). */
-    public function currentReview(): HasOne
+    /** Penugasan review ronde berjalan: yang belum digantikan reviewer lain (maks. REQUIRED_REVIEWERS). */
+    public function currentReviews(): HasMany
     {
-        return $this->hasOne(Review::class)->whereNull('superseded_at')->latestOfMany();
+        return $this->hasMany(Review::class)->whereNull('superseded_at');
+    }
+
+    /** Progres kelengkapan review, mis. "2 dari 3 reviewer telah selesai". Pakai relasi currentReviews. */
+    public function getReviewProgressAttribute(): array
+    {
+        $done = $this->currentReviews->where('status', 'selesai')->count();
+
+        return [
+            'done'     => $done,
+            'required' => self::REQUIRED_REVIEWERS,
+            'complete' => $done >= self::REQUIRED_REVIEWERS,
+            'label'    => "{$done} dari " . self::REQUIRED_REVIEWERS . ' reviewer telah selesai',
+        ];
     }
 
     // -------------------------------------------------------------------------

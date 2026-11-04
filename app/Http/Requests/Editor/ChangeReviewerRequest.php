@@ -18,6 +18,7 @@ class ChangeReviewerRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'review_id'   => ['required', 'integer'],
             'reviewer_id' => ['required', Rule::exists('users', 'id')->where('role', 'Reviewer')],
             'due_at'      => ['nullable', 'date', 'after_or_equal:today'],
             'editor_note' => ['nullable', 'string', 'max:2000'],
@@ -28,6 +29,7 @@ class ChangeReviewerRequest extends FormRequest
     {
         return [
             'due_at.after_or_equal'   => 'Tenggat waktu tidak boleh sebelum hari ini.',
+            'review_id.required'   => 'Pilih penugasan reviewer yang akan diganti.',
             'reviewer_id.required' => 'Pilih reviewer pengganti.',
             'reviewer_id.exists'   => 'Reviewer yang dipilih tidak ditemukan.',
         ];

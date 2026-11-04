@@ -1,4 +1,4 @@
-{{-- Modal Detail Naskah Baru: info read-only, rekomendasi 1 reviewer, form keputusan administrasi. --}}
+{{-- Modal Detail Naskah Baru: info read-only, rekomendasi 3 reviewer, form keputusan administrasi. --}}
 <div x-data="manuscriptModal()"
      x-on:open-editor-modal.window="$event.detail.name === 'manuscript' && open($event.detail.id)">
 
@@ -12,16 +12,19 @@
         @include('roles.editor.partials.recommendation-box')
 
         <form @submit.prevent="save()" class="space-y-4">
-            <div>
-                <label class="block text-xs font-semibold text-gray-600 mb-1.5" for="m-reviewer">Reviewer yang Ditugaskan</label>
-                <select id="m-reviewer" x-model="form.reviewer_id" :disabled="form.decision === 'ditolak'"
-                        class="w-full text-sm border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-red-500 focus:border-red-500 bg-white disabled:bg-gray-50 disabled:text-gray-400">
-                    <option value="">— Pilih Reviewer —</option>
-                    <template x-for="r in detail?.reviewers ?? []" :key="r.id">
-                        <option :value="r.id" x-text="`${r.name} (${r.active_load} naskah aktif)`"></option>
-                    </template>
-                </select>
-            </div>
+            {{-- 3 reviewer anonim (blind review); daftar sudah urut beban kerja terendah. --}}
+            <template x-for="i in [0, 1, 2]" :key="i">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1.5" :for="`m-reviewer-${i}`" x-text="`Reviewer ${i + 1}`"></label>
+                    <select :id="`m-reviewer-${i}`" x-model="form.reviewer_ids[i]" :disabled="form.decision === 'ditolak'"
+                            class="w-full text-sm border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-red-500 focus:border-red-500 bg-white disabled:bg-gray-50 disabled:text-gray-400">
+                        <option value="">— Pilih Reviewer —</option>
+                        <template x-for="r in detail?.reviewers ?? []" :key="r.id">
+                            <option :value="String(r.id)" x-text="`${r.name} (${r.active_load} naskah aktif)`"></option>
+                        </template>
+                    </select>
+                </div>
+            </template>
 
 
             <div>
@@ -69,28 +72,28 @@ function manuscriptModal() {
         detailUrl: @js(route('editor.manuscripts.detail', '__ID__')),
         assignUrl: @js(route('editor.manuscripts.assign', '__ID__')),
         manuscriptId: null,
-        form: { decision: '', reviewer_id: '', editor_note: '', due_at: '' },
+        form: { decision: '', reviewer_ids: ['', '', ''], editor_note: '', due_at: '' },
 
         // Tenggat terisi otomatis (hari ini + 14 hari) dari server; editor bebas mengubahnya.
         onLoaded(d) { this.form.due_at = d.default_due_at; },
 
         open(id) {
             this.manuscriptId = id;
-            this.form = { decision: '', reviewer_id: '', editor_note: '', due_at: '' };
+            this.form = { decision: '', reviewer_ids: ['', '', ''], editor_note: '', due_at: '' };
             this.openModal(this.detailUrl.replace('__ID__', id));
         },
 
-        // "Gunakan Rekomendasi Ini": isi dropdown reviewer + pilih "Terima".
+        // "Gunakan Rekomendasi Ini": isi ketiga dropdown reviewer + pilih "Terima".
         useRecommendation() {
-            this.form.reviewer_id = this.detail.recommendation.id;
+            this.form.reviewer_ids = [0, 1, 2].map(i => String(this.detail.recommendations[i]?.id ?? ''));
             this.form.decision = 'diterima';
         },
 
         save() {
             this.errorMsg = '';
             if (!this.form.decision) { this.errorMsg = 'Pilih keputusan administrasi terlebih dahulu.'; return; }
-            if (this.form.decision === 'diterima' && !this.form.reviewer_id) {
-                this.errorMsg = 'Pilih reviewer untuk meneruskan naskah ke tahap review.';
+            if (this.form.decision === 'diterima' && !window.allDistinct(this.form.reviewer_ids)) {
+                this.errorMsg = 'Pilih 3 reviewer yang berbeda untuk meneruskan naskah ke tahap review.';
                 return;
             }
             this.submit(this.assignUrl.replace('__ID__', this.manuscriptId), this.form);

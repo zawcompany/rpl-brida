@@ -48,14 +48,19 @@ class NotificationService
 
     public function reviewCompleted(Review $review, bool $updated = false): void
     {
+        $manuscript = $review->manuscript;
+        $awaiting   = $manuscript->status === 'menunggu_keputusan';
+
         $this->send(
             $this->usersWithRole('Editor'),
             'review.completed',
             $updated ? 'Review diperbarui' : 'Review selesai',
-            $updated
-                ? "Reviewer memperbarui hasil review \"{$review->manuscript->title}\"."
-                : "Review \"{$review->manuscript->title}\" selesai dan menunggu keputusan editorial.",
-            route('editor.decisions.index', absolute: false)
+            match (true) {
+                $updated  => "Reviewer memperbarui hasil review \"{$manuscript->title}\".",
+                $awaiting => "Semua reviewer \"{$manuscript->title}\" telah selesai dan menunggu keputusan editorial.",
+                default   => "Review \"{$manuscript->title}\" selesai: " . $manuscript->load('currentReviews')->review_progress['label'] . '.',
+            },
+            route($awaiting ? 'editor.decisions.index' : 'editor.reviews.index', absolute: false)
         );
     }
 
@@ -87,8 +92,8 @@ class NotificationService
         );
     }
 
-    /** Keputusan editorial akhir (disetujui / revisi / ditolak). */
-    public function editorialDecision(Manuscript $manuscript): void
+    /** Keputusan editorial akhir (disetujui / revisi minor|mayor / ditolak). */
+    public function editorialDecision(Manuscript $manuscript, ?string $decisionLabel = null): void
     {
         [$type, $title, $route] = match ($manuscript->status) {
             'revisi'    => ['manuscript.revision', 'Naskah perlu revisi', 'author.revisions.index'],
@@ -100,7 +105,7 @@ class NotificationService
             $manuscript->author_id,
             $type,
             $title,
-            "Keputusan editor untuk \"{$manuscript->title}\": {$manuscript->status_label}.",
+            "Keputusan editor untuk \"{$manuscript->title}\": " . ($decisionLabel ?? $manuscript->status_label) . ".",
             route($route, absolute: false)
         );
     }

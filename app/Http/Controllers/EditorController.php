@@ -54,7 +54,7 @@ class EditorController extends Controller
         );
     }
 
-    /** AJAX: detail naskah + 1 rekomendasi reviewer terbaik (untuk modal). */
+    /** AJAX: detail naskah + rekomendasi 3 reviewer (untuk modal). */
     public function manuscriptDetail(Manuscript $manuscript): JsonResponse
     {
         abort_unless(in_array($manuscript->status, Manuscript::NEW_STATUSES, true), 404);
@@ -63,9 +63,9 @@ class EditorController extends Controller
 
         return response()->json([
             'manuscript'     => ManuscriptSummaryResource::make($manuscript)->resolve(),
-            'recommendation' => $this->editorService->getBestReviewer($manuscript),
-            'reviewers'      => $this->editorService->getAssignableReviewers(),
-            'default_due_at' => $this->editorService->defaultDueDate(),
+            'recommendations' => $this->editorService->getRecommendedReviewers($manuscript),
+            'reviewers'       => $this->editorService->getAssignableReviewers(),
+            'default_due_at'  => $this->editorService->defaultDueDate(),
         ]);
     }
 
@@ -77,12 +77,12 @@ class EditorController extends Controller
             fn () => $this->editorService->processDecision(
                 manuscript: $manuscript,
                 decision:   $decision,
-                reviewerId: $request->validated('reviewer_id'),
+                reviewerIds: $request->validated('reviewer_ids') ?? [],
                 editorNote: $request->validated('editor_note'),
                 editorId:   $request->user()->id,
                 dueAt:      $request->validated('due_at'),
             ),
-            $decision === 'ditolak' ? 'Naskah berhasil ditolak.' : 'Naskah berhasil diteruskan ke reviewer.'
+            $decision === 'ditolak' ? 'Naskah berhasil ditolak.' : 'Naskah berhasil diteruskan ke 3 reviewer.'
         );
     }
 
@@ -104,17 +104,21 @@ class EditorController extends Controller
     {
         abort_unless(in_array($manuscript->status, Manuscript::REVIEW_STATUSES, true), 404);
 
-        $manuscript->load(['author', 'researchField', 'currentReview.reviewer']);
-        $review = $manuscript->currentReview;
+        $manuscript->load(['author', 'researchField', 'currentReviews.reviewer']);
+        $reviews = $manuscript->currentReviews;
+
+        // Reviewer yang sudah memegang slot tidak ditawarkan lagi sebagai pengganti.
+        $taken = $reviews->pluck('reviewer_id')->all();
 
         return response()->json([
-            'manuscript'     => ManuscriptSummaryResource::make($manuscript)->resolve(),
-            'review'         => $review ? ReviewResource::make($review)->resolve() : null,
-            'recommendation' => $review?->isReplaceable()
-                ? $this->editorService->getBestReviewer($manuscript, $review->reviewer_id)
-                : null,
-            'reviewers'      => $this->editorService->getAssignableReviewers($review?->reviewer_id),
-            'default_due_at' => $this->editorService->defaultDueDate(),
+            'manuscript'      => ManuscriptSummaryResource::make($manuscript)->resolve(),
+            'progress'        => $manuscript->review_progress,
+            'reviews'         => ReviewResource::collection($reviews)->resolve(),
+            'recommendations' => $reviews->contains(fn ($r) => $r->isReplaceable())
+                ? $this->editorService->getRecommendedReviewers($manuscript, $taken, 1)
+                : [],
+            'reviewers'       => $this->editorService->getAssignableReviewers($taken),
+            'default_due_at'  => $this->editorService->defaultDueDate(),
         ]);
     }
 
@@ -122,7 +126,7 @@ class EditorController extends Controller
     {
         return $this->perform(
             fn () => $this->editorService->sendReminder($manuscript),
-            'Pengingat berhasil dikirim ke reviewer.'
+            'Pengingat berhasil dikirim ke reviewer yang belum selesai.'
         );
     }
 
@@ -131,6 +135,7 @@ class EditorController extends Controller
         return $this->perform(
             fn () => $this->editorService->replaceReviewer(
                 $manuscript,
+                (int) $request->validated('review_id'),
                 (int) $request->validated('reviewer_id'),
                 $request->validated('editor_note'),
                 $request->user()->id,
@@ -160,28 +165,29 @@ class EditorController extends Controller
 
         $manuscript->load(['author', 'researchField']);
 
-        $reviews = $manuscript->reviews()
-            ->whereNull('superseded_at')
+        $reviews = $manuscript->currentReviews()
             ->where('status', 'selesai')
             ->with('reviewer')
             ->get();
 
         return response()->json([
-            'manuscript'     => ManuscriptSummaryResource::make($manuscript)->resolve(),
-            'reviews'        => ReviewResource::collection($reviews)->resolve(),
-            'recommendation' => $manuscript->isRevision() ? $this->editorService->getBestReviewer($manuscript) : null,
-            'reviewers'      => $manuscript->isRevision() ? $this->editorService->getAssignableReviewers() : [],
-            'default_due_at' => $this->editorService->defaultDueDate(),
+            'manuscript'      => ManuscriptSummaryResource::make($manuscript)->resolve(),
+            'reviews'         => ReviewResource::collection($reviews)->resolve(),
+            'summary'         => $this->editorService->summarizeRecommendations($reviews),
+            'progress'        => $manuscript->load('currentReviews')->review_progress,
+            'recommendations' => $manuscript->isRevision() ? $this->editorService->getRecommendedReviewers($manuscript) : [],
+            'reviewers'       => $manuscript->isRevision() ? $this->editorService->getAssignableReviewers() : [],
+            'default_due_at'  => $this->editorService->defaultDueDate(),
         ]);
     }
 
-    /** Revisi mayor: kirim naskah revisi kembali ke reviewer. */
+    /** Revisi mayor: kirim naskah revisi kembali ke 3 reviewer. */
     public function requestReReview(ReReviewRequest $request, Manuscript $manuscript): JsonResponse
     {
         return $this->perform(
             fn () => $this->editorService->requestReReview(
                 $manuscript,
-                (int) $request->validated('reviewer_id'),
+                $request->validated('reviewer_ids'),
                 $request->validated('editor_note'),
                 $request->user()->id,
                 $request->validated('due_at'),
@@ -200,7 +206,7 @@ class EditorController extends Controller
                 $decision,
                 $request->validated('editorial_note'),
             ),
-            'Keputusan editorial berhasil disimpan (' . Manuscript::STATUSES[Manuscript::DECISION_STATUS[$decision]] . ').'
+            'Keputusan editorial berhasil disimpan (' . Manuscript::DECISION_LABELS[$decision] . ').'
         );
     }
 }

@@ -26,7 +26,7 @@ class EditorialFlowAndSessionTest extends TestCase
     public function test_initial_decision_accepts_only_terima_or_tolak(): void
     {
         $editor = $this->user('Editor', 'e@t.test');
-        $reviewer = $this->user('Reviewer', 'r@t.test');
+        $reviewers = collect(['r1', 'r2', 'r3'])->map(fn ($n) => $this->user('Reviewer', "{$n}@t.test")->id)->all();
         $author = $this->user('Author', 'a@t.test');
         $m = Manuscript::create(['author_id' => $author->id, 'title' => 'N', 'status' => 'pending']);
 
@@ -34,15 +34,15 @@ class EditorialFlowAndSessionTest extends TestCase
 
         // nilai lama tidak lagi valid
         foreach (['ditinjau', 'lanjut', ''] as $old) {
-            $this->postJson("/editor/naskah/{$m->id}/assign", ['decision' => $old, 'reviewer_id' => $reviewer->id])
+            $this->postJson("/editor/naskah/{$m->id}/assign", ['decision' => $old, 'reviewer_ids' => $reviewers])
                 ->assertUnprocessable()->assertJsonValidationErrors('decision');
         }
 
-        // Terima wajib reviewer
+        // Terima wajib 3 reviewer
         $this->postJson("/editor/naskah/{$m->id}/assign", ['decision' => 'diterima'])
-            ->assertUnprocessable()->assertJsonValidationErrors('reviewer_id');
+            ->assertUnprocessable()->assertJsonValidationErrors('reviewer_ids');
 
-        $this->postJson("/editor/naskah/{$m->id}/assign", ['decision' => 'diterima', 'reviewer_id' => $reviewer->id])->assertOk();
+        $this->postJson("/editor/naskah/{$m->id}/assign", ['decision' => 'diterima', 'reviewer_ids' => $reviewers])->assertOk();
         $this->assertSame('ditinjau', $m->fresh()->status);
     }
 

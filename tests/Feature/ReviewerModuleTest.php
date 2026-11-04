@@ -162,6 +162,13 @@ class ReviewerModuleTest extends TestCase
     public function test_submit_review_saves_result_moves_manuscript_notifies_editor_and_logs(): void
     {
         $r = $this->assignment('diterima');
+        // Dua reviewer lain pada naskah yang sama sudah selesai: review ini adalah yang ke-3 (melengkapi).
+        foreach (['b@t.test', 'c@t.test'] as $email) {
+            Review::create([
+                'manuscript_id' => $r->manuscript_id, 'reviewer_id' => $this->user('Reviewer', $email)->id, 'assigned_by' => $this->editor->id,
+                'status' => 'selesai', 'recommendation' => 'ditolak', 'completed_at' => now(),
+            ]);
+        }
 
         $this->actingAs($this->reviewer)->post(route('reviewer.reviews.submit', $r), $this->payload([
             'review_file' => $this->pdf('catatan.pdf'),
@@ -181,6 +188,29 @@ class ReviewerModuleTest extends TestCase
 
         // muncul di antrean Keputusan Editorial
         $this->actingAs($this->editor)->getJson(route('editor.decisions.index'))->assertOk()->assertJson(['total' => 1]);
+    }
+
+    public function test_naskah_tetap_ditinjau_sampai_ketiga_reviewer_selesai(): void
+    {
+        $r = $this->assignment('diterima');
+        $this->actingAs($this->reviewer)->postJson(route('reviewer.reviews.submit', $r), $this->payload())->assertOk();
+
+        $m = $r->manuscript->fresh();
+        $this->assertSame('selesai', $r->fresh()->status);
+        $this->assertSame('ditinjau', $m->status); // baru 1 dari 3 reviewer
+        $this->assertSame('1 dari 3 reviewer telah selesai', $m->load('currentReviews')->review_progress['label']);
+
+        $this->actingAs($this->editor)->getJson(route('editor.decisions.index'))->assertOk()->assertJson(['total' => 0]);
+    }
+
+    public function test_reviewer_dapat_mengirim_rekomendasi_diterima(): void
+    {
+        $r = $this->assignment('diterima');
+
+        $this->actingAs($this->reviewer)->postJson(route('reviewer.reviews.submit', $r), $this->payload(['recommendation' => 'diterima']))
+            ->assertOk();
+
+        $this->assertSame('diterima', $r->fresh()->recommendation);
     }
 
     public function test_submit_review_validation(): void

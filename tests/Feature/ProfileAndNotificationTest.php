@@ -279,13 +279,14 @@ class ProfileAndNotificationTest extends TestCase
         $this->assertSame(0, $author->notifications()->count());
 
         // 2. editor menerima + tugaskan -> reviewer & author
-        app(EditorService::class)->processDecision($m, 'diterima', $reviewer->id, null, $editor->id);
+        $others = [$this->user('Reviewer', 'reviewer2@t.test'), $this->user('Reviewer', 'reviewer3@t.test')];
+        app(EditorService::class)->processDecision($m, 'diterima', [$reviewer->id, $others[0]->id, $others[1]->id], null, $editor->id);
         $this->assertSame('review.assigned', $reviewer->notifications()->first()->data['type']);
         $this->assertSame('manuscript.accepted', $author->notifications()->first()->data['type']);
 
         // 3. keputusan editorial revisi -> author
         $m->update(['status' => 'menunggu_keputusan']);
-        app(EditorService::class)->recordEditorialDecision($m, 'revisi', 'Perbaiki metode');
+        app(EditorService::class)->recordEditorialDecision($m, 'revisi_mayor', 'Perbaiki metode');
         $this->assertContains('manuscript.revision', $this->typesOf($author));
 
         // 4. author unggah revisi -> editor

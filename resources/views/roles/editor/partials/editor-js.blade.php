@@ -37,6 +37,11 @@ window.editorApi = async function (url, { method = 'GET', body = null } = {}) {
     return data;
 };
 
+// Semua slot reviewer terisi dan tidak ada yang kembar (aturan tepat 3 reviewer berbeda).
+window.allDistinct = function (ids) {
+    return ids.every(Boolean) && new Set(ids).size === ids.length;
+};
+
 window.openEditorModal = function (name, id) {
     window.dispatchEvent(new CustomEvent('open-editor-modal', { detail: { name, id } }));
 };

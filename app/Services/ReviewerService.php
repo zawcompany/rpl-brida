@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\ActivityLog;
+use App\Models\Manuscript;
 use App\Models\Review;
 use App\Models\User;
 use App\Services\Files\ManuscriptFileStore;
@@ -116,7 +117,8 @@ class ReviewerService
 
     /**
      * Kirim hasil review pertama kali: simpan rubrik, komentar, rekomendasi (+ lampiran),
-     * review -> 'selesai' dan naskah -> 'menunggu_keputusan' (muncul di Keputusan Editorial).
+     * review -> 'selesai'. Naskah -> 'menunggu_keputusan' (muncul di Keputusan Editorial) hanya
+     * setelah semua reviewer (REQUIRED_REVIEWERS) mengumpulkan hasil. Hasil hanya terlihat oleh editor.
      *
      * @param array{comments: string, recommendation: string} $data  + kolom rubrik (Review::RUBRIC)
      * @throws DomainException
@@ -133,7 +135,12 @@ class ReviewerService
             $review->fill($this->resultAttributes($data, $file, $review));
             $review->fill(['status' => 'selesai', 'completed_at' => now()])->save();
 
-            $review->manuscript->update(['status' => 'menunggu_keputusan']);
+            // Pengecekan kelengkapan: editor baru bisa memutuskan setelah ke-3 review berstatus 'selesai'.
+            $completed = $review->manuscript->currentReviews()->where('status', 'selesai')->count();
+
+            if ($completed >= Manuscript::REQUIRED_REVIEWERS) {
+                $review->manuscript->update(['status' => 'menunggu_keputusan']);
+            }
         });
 
         ActivityLog::record('review.submitted', "Review \"{$review->manuscript->title}\" dikirim oleh {$review->reviewer->name}", $review->reviewer_id);
@@ -143,7 +150,7 @@ class ReviewerService
     }
 
     /**
-     * Ubah hasil review selama editor belum memutuskan (naskah masih 'menunggu_keputusan').
+     * Ubah hasil review selama editor belum memutuskan (naskah masih 'ditinjau' atau 'menunggu_keputusan').
      *
      * @throws DomainException
      */
@@ -151,7 +158,7 @@ class ReviewerService
     {
         $this->ensureCurrent($review);
 
-        if ($review->status !== 'selesai' || $review->manuscript->status !== 'menunggu_keputusan') {
+        if ($review->status !== 'selesai' || ! in_array($review->manuscript->status, ['ditinjau', 'menunggu_keputusan'], true)) {
             throw new DomainException('Review tidak dapat diubah karena editor sudah memproses naskah ini.');
         }
 
