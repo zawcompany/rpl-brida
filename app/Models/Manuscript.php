@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Manuscript extends Model
 {
     protected $fillable = [
+        'journal_id',
         'author_id',
         'research_field_id',
         'title',
@@ -84,9 +85,28 @@ class Manuscript extends Model
         'ditolak'      => 'Ditolak',
     ];
 
+    protected static function booted(): void
+    {
+        // Naskah selalu milik satu jurnal; tanpa penanda eksplisit, masuk ke jurnal bawaan.
+        static::creating(function (Manuscript $m): void {
+            $m->journal_id ??= Journal::defaultId();
+        });
+    }
+
     // -------------------------------------------------------------------------
     // Relasi
     // -------------------------------------------------------------------------
+
+    public function journal(): BelongsTo
+    {
+        return $this->belongsTo(Journal::class);
+    }
+
+    /** Batasi ke jurnal tertentu; null = tanpa pembatasan (Administrator). */
+    public function scopeInJournals(Builder $query, ?array $journalIds): Builder
+    {
+        return $journalIds === null ? $query : $query->whereIn('manuscripts.journal_id', $journalIds);
+    }
 
     public function author(): BelongsTo
     {

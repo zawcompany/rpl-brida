@@ -50,6 +50,7 @@ class AuthorModuleTest extends TestCase
     private function payload(array $override = []): array
     {
         return $override + [
+            'journal_id' => \App\Models\Journal::defaultId(),
             'title' => 'Judul Baru', 'research_field_id' => $this->field->id,
             'abstract' => 'Abstrak lengkap.', 'keywords' => 'riset, brida',
             'co_authors' => [['name' => 'Budi', 'email' => 'budi@x.test'], ['name' => '', 'email' => '']],

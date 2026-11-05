@@ -18,6 +18,7 @@ class SearchArticlesRequest extends FormRequest
             'q'     => ['nullable', 'string', 'max:100'],
             'field' => ['nullable', 'integer', 'exists:research_fields,id'],
             'issue' => ['nullable', 'integer', 'exists:issues,id'],
+            'journal' => ['nullable', 'string', 'max:255', 'exists:journals,slug'],
         ];
     }
 }

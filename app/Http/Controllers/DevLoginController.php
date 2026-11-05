@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Journal;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -23,6 +24,11 @@ class DevLoginController extends Controller
             ['email' => strtolower($role) . '@brida.com'],
             ['name' => 'Akun Tes ' . $role, 'password' => 'password123', 'role' => $role]
         );
+
+        // Akun tes langsung menjadi anggota jurnal bawaan agar semua alur (kirim naskah, editor, reviewer) bisa dicoba.
+        if (($journal = Journal::default()) && in_array($role, Journal::ROLES, true)) {
+            $user->joinJournal($journal, $role);
+        }
 
         auth()->login($user);
         $request->session()->regenerate();

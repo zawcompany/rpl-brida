@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Journal;
 use App\Models\Manuscript;
 use App\Models\Review;
 use App\Models\User;
@@ -27,7 +28,7 @@ class NotificationService
     public function manuscriptSubmitted(Manuscript $manuscript): void
     {
         $this->send(
-            $this->usersWithRole('Editor'),
+            $this->editorsOf($manuscript),
             'manuscript.submitted',
             'Naskah baru diajukan',
             "\"{$manuscript->title}\" menunggu pemeriksaan administrasi.",
@@ -52,7 +53,7 @@ class NotificationService
         $awaiting   = $manuscript->status === 'menunggu_keputusan';
 
         $this->send(
-            $this->usersWithRole('Editor'),
+            $this->editorsOf($manuscript),
             'review.completed',
             $updated ? 'Review diperbarui' : 'Review selesai',
             match (true) {
@@ -68,7 +69,7 @@ class NotificationService
     public function reviewDeclined(Review $review): void
     {
         $this->send(
-            $this->usersWithRole('Editor'),
+            $this->editorsOf($review->manuscript),
             'review.declined',
             'Penugasan ditolak reviewer',
             "{$review->reviewer->name} menolak meninjau \"{$review->manuscript->title}\". Silakan tugaskan reviewer lain.",
@@ -113,7 +114,7 @@ class NotificationService
     public function revisionSubmitted(Manuscript $manuscript): void
     {
         $this->send(
-            $this->usersWithRole('Editor'),
+            $this->editorsOf($manuscript),
             'revision.submitted',
             'Revisi dari author',
             "Author mengunggah revisi \"{$manuscript->title}\".",
@@ -191,8 +192,12 @@ class NotificationService
         $recipients->each(fn (User $u) => $u->notify(new WorkflowNotification($type, $title, $message, $url)));
     }
 
-    private function usersWithRole(string $role): Collection
+    /** Editor aktif pada jurnal naskah ini; editor jurnal lain tidak ikut diberi tahu. */
+    private function editorsOf(Manuscript $manuscript): Collection
     {
-        return User::where('role', $role)->where('is_active', true)->get();
+        return User::where('role', 'Editor')
+            ->where('is_active', true)
+            ->whereHas('journals', fn ($j) => $j->whereKey($manuscript->journal_id)->where('journal_user.role', Journal::EDITOR))
+            ->get();
     }
 }

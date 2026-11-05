@@ -14,6 +14,8 @@ use App\Http\Controllers\ReviewerController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PublicController;
+use App\Http\Controllers\JournalController;
+use App\Http\Controllers\JournalManagementController;
 
 /*
 |--------------------------------------------------------------------------
@@ -34,7 +36,22 @@ Route::get('/download/{id}', [PublicController::class, 'download'])->whereNumber
 Route::get('/archives', [PublicController::class, 'archives'])->name('archives.index');
 Route::get('/archives/{issue}', [PublicController::class, 'issue'])->whereNumber('issue')->name('archives.show');
 
-Route::get('/panduan/template', [PublicController::class, 'template'])->name('guide.template');
+// Jurnal (multijurnal): daftar, halaman jurnal, gabung kelompok, dan template per jurnal (khusus anggota)
+Route::get('/jurnal', [JournalController::class, 'index'])->name('journals.index');
+Route::get('/jurnal/{journal}', [JournalController::class, 'show'])->name('journals.show');
+Route::middleware('auth')->group(function () {
+    Route::post('/jurnal/{journal}/gabung', [JournalController::class, 'join'])
+        ->middleware('role:author')->name('journals.join');
+    Route::delete('/jurnal/{journal}/gabung', [JournalController::class, 'leave'])
+        ->middleware('role:author')->name('journals.leave');
+    Route::get('/jurnal/{journal}/template', [JournalController::class, 'template'])
+        ->middleware('throttle:30,1')->name('journals.template');
+    Route::post('/jurnal/{journal}/template', [JournalController::class, 'uploadTemplate'])
+        ->name('journals.template.upload');
+});
+
+// URL template lama: template kini per jurnal, jadi arahkan ke daftar jurnal.
+Route::redirect('/panduan/template', '/jurnal')->name('guide.template');
 
 // URL Reader lama -> URL baru
 Route::redirect('/reader', '/articles');
@@ -102,7 +119,7 @@ Route::middleware('auth')->group(function () {
 });
 
 // 5. EDITOR MODULE
-Route::middleware(['auth', 'role:editor'])
+Route::middleware(['auth', 'role:editor', 'journal.access'])
     ->prefix('editor')
     ->name('editor.')
     ->group(function () {
@@ -205,6 +222,11 @@ Route::middleware(['auth', 'role:editor'])
             IssueController::class,
             'publish',
         ])->name('issues.publish');
+
+        // Jurnal Saya: template dan reviewer pada jurnal yang dikelola editor
+        Route::get('/jurnal', [JournalManagementController::class, 'editorIndex'])->name('journals.index');
+        Route::post('/jurnal/{journal}/anggota', [JournalManagementController::class, 'addMember'])->name('journals.members.add');
+        Route::delete('/jurnal/{journal}/anggota/{user}/{role}', [JournalManagementController::class, 'removeMember'])->name('journals.members.remove');
 
         // Direktori Reviewer
         Route::get('/reviewer', [
@@ -315,6 +337,14 @@ Route::middleware(['auth', 'role:admin'])
             AdminController::class,
             'resetPassword',
         ])->name('users.reset');
+
+        // Kelola Jurnal & anggotanya
+        Route::get('/jurnal', [JournalManagementController::class, 'adminIndex'])->name('journals.index');
+        Route::post('/jurnal', [JournalManagementController::class, 'store'])->name('journals.store');
+        Route::get('/jurnal/{journal}', [JournalManagementController::class, 'adminShow'])->name('journals.show');
+        Route::put('/jurnal/{journal}', [JournalManagementController::class, 'update'])->name('journals.update');
+        Route::post('/jurnal/{journal}/anggota', [JournalManagementController::class, 'addMember'])->name('journals.members.add');
+        Route::delete('/jurnal/{journal}/anggota/{user}/{role}', [JournalManagementController::class, 'removeMember'])->name('journals.members.remove');
 
         // Role & Hak Akses
         Route::get('/role', [

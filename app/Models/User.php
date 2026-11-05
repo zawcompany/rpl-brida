@@ -60,6 +60,73 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->belongsToMany(ResearchField::class, 'reviewer_research_field');
     }
 
+    /** Jurnal tempat user menjadi anggota (peran per jurnal ada di pivot `role`). */
+    public function journals(): BelongsToMany
+    {
+        return $this->belongsToMany(Journal::class)->withPivot('role')->withTimestamps();
+    }
+
+    /** Cache id jurnal per peran selama satu request. */
+    private array $journalIdCache = [];
+
+    /**
+     * Id jurnal tempat user berperan $role (Author | Editor | Reviewer).
+     *
+     * @return int[]
+     */
+    public function journalIds(string $role): array
+    {
+        return $this->journalIdCache[$role] ??= $this->journals()
+            ->wherePivot('role', $role)
+            ->pluck('journals.id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+    }
+
+    /** Anggota jurnal ini? Tanpa $role: peran apa pun. */
+    public function isMemberOf(Journal|int $journal, ?string $role = null): bool
+    {
+        $id = $journal instanceof Journal ? $journal->id : $journal;
+
+        return $this->journals()
+            ->where('journals.id', $id)
+            ->when($role, fn (Builder $q) => $q->where('journal_user.role', $role))
+            ->exists();
+    }
+
+    /** Masukkan user ke jurnal dengan peran tertentu (idempoten). */
+    public function joinJournal(Journal $journal, string $role): void
+    {
+        if (! $this->isMemberOf($journal, $role)) {
+            $this->journals()->attach($journal->id, ['role' => $role]);
+        }
+
+        $this->journalIdCache = [];
+    }
+
+    /** Keluarkan user dari jurnal untuk peran tertentu. */
+    public function leaveJournal(Journal $journal, string $role): void
+    {
+        $this->journals()->wherePivot('role', $role)->detach($journal->id);
+
+        $this->journalIdCache = [];
+    }
+
+    /**
+     * Id jurnal yang boleh dikelola/dilihat user sebagai staf: Administrator = semua (null),
+     * Editor = jurnal tempat ia menjadi editor, lainnya = tidak ada.
+     *
+     * @return int[]|null
+     */
+    public function editableJournalIds(): ?array
+    {
+        return match ($this->role) {
+            'Administrator' => null,
+            'Editor'        => $this->journalIds(Journal::EDITOR),
+            default         => [],
+        };
+    }
+
     // -------------------------------------------------------------------------
     // Helper
     // -------------------------------------------------------------------------

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Journal;
 use App\Models\Manuscript;
 use App\Models\ResearchField;
 use App\Models\User;
@@ -70,6 +71,12 @@ class AuthorService
     // Pengajuan naskah
     // -------------------------------------------------------------------------
 
+    /** Jurnal tempat penulis sudah bergabung (pilihan tujuan pengajuan). */
+    public function getAuthorJournals(User $author): Collection
+    {
+        return $author->journals()->wherePivot('role', Journal::AUTHOR)->active()->orderBy('name')->get(['journals.id', 'journals.name']);
+    }
+
     public function getResearchFields(): Collection
     {
         return ResearchField::orderBy('name')->get(['id', 'name']);
@@ -79,13 +86,14 @@ class AuthorService
      * Ajukan naskah baru: simpan berkas, catat metadata, status awal 'pending'
      * (langsung masuk ke antrean "Naskah Baru" editor).
      *
-     * @param array{title: string, research_field_id: int, abstract: string, keywords: string, co_authors?: array} $data
+     * @param array{journal_id: int, title: string, research_field_id: int, abstract: string, keywords: string, co_authors?: array} $data
      */
     public function submit(User $author, array $data, UploadedFile $file): Manuscript
     {
         $path = $this->files->put($file, "manuscripts/{$author->id}");
 
         $manuscript = $author->manuscripts()->create([
+            'journal_id'         => $data['journal_id'],
             'title'              => $data['title'],
             'research_field_id'  => $data['research_field_id'],
             'abstract'           => $data['abstract'],

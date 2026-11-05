@@ -37,6 +37,7 @@ class StorageDriverSwitchTest extends TestCase
         Storage::fake('local');
 
         $m = app(AuthorService::class)->submit($this->author(), [
+            'journal_id' => \App\Models\Journal::defaultId(),
             'title' => 'T', 'research_field_id' => null, 'abstract' => 'A', 'keywords' => 'k',
         ], $this->pdf());
 

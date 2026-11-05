@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Journal;
 use App\Models\Manuscript;
 use App\Models\Review;
 use App\Models\ResearchField;
@@ -33,6 +34,20 @@ class EditorService
 
     private const PER_PAGE_OPTIONS = [10, 25, 50, 100];
 
+    /**
+     * Jurnal yang boleh dilihat editor yang sedang login (null = semua, untuk Administrator;
+     * array kosong = tidak ada). Semua daftar naskah dan reviewer dibatasi lewat nilai ini.
+     *
+     * @return int[]|null
+     */
+    private function journalIds(): ?array
+    {
+        $user = auth()->user();
+
+        // Tanpa pengguna: tidak ada jurnal. Administrator: null (semua). `?? []` di sini akan salah mengubah null itu.
+        return $user ? $user->editableJournalIds() : [];
+    }
+
     // -------------------------------------------------------------------------
     // Dashboard
     // -------------------------------------------------------------------------
@@ -42,7 +57,8 @@ class EditorService
      */
     public function getDashboardStats(): array
     {
-        $lastMonth = Carbon::now()->subMonth();
+        $lastMonth  = Carbon::now()->subMonth();
+        $journalIds = $this->journalIds();
 
         $widgets = [
             ['label' => 'Naskah Baru',         'icon' => 'inbox', 'color' => 'blue',   'statuses' => Manuscript::NEW_STATUSES],
@@ -51,10 +67,10 @@ class EditorService
             ['label' => 'Menunggu Publikasi',  'icon' => 'check', 'color' => 'green',  'statuses' => ['disetujui']],
         ];
 
-        return collect($widgets)->map(function (array $widget) use ($lastMonth): array {
-            $current = Manuscript::whereIn('status', $widget['statuses'])->count();
+        return collect($widgets)->map(function (array $widget) use ($lastMonth, $journalIds): array {
+            $current = Manuscript::inJournals($journalIds)->whereIn('status', $widget['statuses'])->count();
 
-            $previous = Manuscript::whereIn('status', $widget['statuses'])
+            $previous = Manuscript::inJournals($journalIds)->whereIn('status', $widget['statuses'])
                 ->whereMonth('created_at', $lastMonth->month)
                 ->whereYear('created_at', $lastMonth->year)
                 ->count();
@@ -77,7 +93,7 @@ class EditorService
     /** 5 naskah terbaru untuk tabel aktivitas dashboard. */
     public function getRecentActivity(): Collection
     {
-        return Manuscript::with(['author', 'researchField'])->latest('updated_at')->limit(5)->get();
+        return Manuscript::inJournals($this->journalIds())->with(['author', 'researchField', 'journal'])->latest('updated_at')->limit(5)->get();
     }
 
     // -------------------------------------------------------------------------
@@ -114,7 +130,7 @@ class EditorService
     {
         $search = $filters['search'] ?? null;
 
-        return Manuscript::with($with)
+        return Manuscript::inJournals($this->journalIds())->with([...$with, 'journal'])
             ->whereIn('status', $statuses)
             ->when(filled($search), fn (Builder $q) => $q->where(
                 fn (Builder $q) => $q->where('title', 'like', "%{$search}%")
@@ -147,7 +163,7 @@ class EditorService
      */
     public function getRecommendedReviewers(Manuscript $manuscript, array $excludeReviewerIds = [], int $limit = Manuscript::REQUIRED_REVIEWERS): Collection
     {
-        return $this->reviewersWithLoad($manuscript->research_field_id)
+        return $this->reviewersWithLoad($manuscript->research_field_id, [$manuscript->journal_id])
             ->when($excludeReviewerIds, fn (Builder $q) => $q->whereKeyNot($excludeReviewerIds))
             ->orderByDesc('field_match')
             ->orderBy('active_load')
@@ -167,12 +183,14 @@ class EditorService
      * Semua reviewer (untuk dropdown) beserta beban aktifnya, urut ASCENDING berdasarkan
      * beban kerja (jumlah review yang belum selesai) — prinsip Load Balancing.
      *
+     * Bila $manuscript diberikan, hanya reviewer yang menjadi anggota jurnal naskah itu yang ditawarkan.
+     *
      * @param int[] $excludeReviewerIds
      * @return Collection<int, array{id: int, name: string, active_load: int}>
      */
-    public function getAssignableReviewers(array $excludeReviewerIds = []): Collection
+    public function getAssignableReviewers(array $excludeReviewerIds = [], ?Manuscript $manuscript = null): Collection
     {
-        return $this->reviewersWithLoad()
+        return $this->reviewersWithLoad(null, $manuscript ? [$manuscript->journal_id] : $this->journalIds())
             ->when($excludeReviewerIds, fn (Builder $q) => $q->whereKeyNot($excludeReviewerIds))
             ->orderBy('active_load')
             ->orderBy('name')
@@ -184,10 +202,19 @@ class EditorService
             ]);
     }
 
-    /** Reviewer + `active_load` (review belum selesai) dan, bila bidang diberikan, `field_match`. */
-    private function reviewersWithLoad(?int $researchFieldId = null): Builder
+    /**
+     * Reviewer + `active_load` (review belum selesai) dan, bila bidang diberikan, `field_match`.
+     * Dibatasi ke reviewer yang menjadi anggota salah satu $journalIds (null = semua jurnal).
+     *
+     * @param int[]|null $journalIds
+     */
+    private function reviewersWithLoad(?int $researchFieldId = null, ?array $journalIds = null): Builder
     {
         return User::reviewers()
+            ->when($journalIds !== null, fn (Builder $q) => $q->whereHas(
+                'journals',
+                fn (Builder $j) => $j->whereIn('journals.id', $journalIds)->where('journal_user.role', Journal::REVIEWER)
+            ))
             ->withCount(['reviews as active_load' => fn (Builder $q) => $q->active()])
             ->when($researchFieldId, fn (Builder $q) => $q->withExists([
                 'researchFields as field_match' => fn (Builder $f) => $f->whereKey($researchFieldId),
@@ -262,6 +289,15 @@ class EditorService
 
     private function assignReview(Manuscript $manuscript, int $reviewerId, int $editorId, ?string $dueAt = null): Review
     {
+        $isMember = User::reviewers()->whereKey($reviewerId)->whereHas(
+            'journals',
+            fn (Builder $j) => $j->whereKey($manuscript->journal_id)->where('journal_user.role', Journal::REVIEWER)
+        )->exists();
+
+        if (! $isMember) {
+            throw new DomainException('Reviewer harus menjadi anggota jurnal naskah ini.');
+        }
+
         $review = Review::create([
             'manuscript_id' => $manuscript->id,
             'reviewer_id'   => $reviewerId,
@@ -417,7 +453,7 @@ class EditorService
     {
         $search = $filters['search'] ?? null;
 
-        return $this->reviewersWithLoad()
+        return $this->reviewersWithLoad(null, $this->journalIds())
             ->with('researchFields')
             ->when(filled($search), fn (Builder $q) => $q->where(
                 fn (Builder $q) => $q->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%")

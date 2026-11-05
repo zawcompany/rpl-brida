@@ -27,6 +27,9 @@ TOKEN=$(curl -sX PUT http://169.254.169.254/latest/api/token -H "X-aws-ec2-metad
 IP=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/public-ipv4)
 aws ssm get-parameter --name /simpil/env --with-decryption --region "$R" --query Parameter.Value --output text > .env
 chmod 600 .env
+# Tag image bukan rahasia: dibaca dari parameter terpisah, jadi rilis baru tidak menyentuh .env rahasia.
+TAG=$(aws ssm get-parameter --name /simpil/image-tag --region "$R" --query Parameter.Value --output text 2>/dev/null || true)
+if [ -n "$TAG" ]; then sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=$TAG/" .env; fi
 echo "APP_URL=http://$IP" >> .env
 REG=$(grep '^ECR_REGISTRY=' .env | cut -d= -f2)
 aws ecr get-login-password --region "$R" | docker login --username AWS --password-stdin "$REG"

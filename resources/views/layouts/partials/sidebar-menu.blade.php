@@ -36,6 +36,21 @@
                 </a>
 
                 <a
+                    href="{{ route('admin.journals.index') }}"
+                    class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors {{ request()->routeIs('admin.journals.*') ? 'bg-red-50 text-red-700 font-medium' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}"
+                    :class="!sidebarOpen && 'justify-center px-0'"
+                    title="Kelola Jurnal"
+                >
+                    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                    </svg>
+
+                    <span x-show="sidebarOpen" class="truncate">
+                        Kelola Jurnal
+                    </span>
+                </a>
+
+                <a
                     href="{{ route('admin.roles.index') }}"
                     class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors {{ request()->routeIs('admin.roles.*') ? 'bg-red-50 text-red-700 font-medium' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}"
                     :class="!sidebarOpen && 'justify-center px-0'"
@@ -188,6 +203,21 @@
             <div class="space-y-1">
 
                 <a
+                    href="{{ route('editor.journals.index') }}"
+                    class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors {{ request()->routeIs('editor.journals.*') ? 'bg-red-50 text-red-700 font-medium' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}"
+                    :class="!sidebarOpen && 'justify-center px-0'"
+                    title="Jurnal Saya"
+                >
+                    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                    </svg>
+
+                    <span x-show="sidebarOpen" class="truncate">
+                        Jurnal Saya
+                    </span>
+                </a>
+
+                <a
                     href="{{ route('editor.reviewers.index') }}"
                     class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors {{ request()->routeIs('editor.reviewers.*') ? 'bg-red-50 text-red-700 font-medium' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}"
                     :class="!sidebarOpen && 'justify-center px-0'"
@@ -294,6 +324,21 @@
             </p>
 
             <div class="space-y-1">
+
+                <a
+                    href="{{ route('journals.index') }}"
+                    class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors {{ request()->routeIs('journals.*') ? 'bg-red-50 text-red-700 font-medium' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}"
+                    :class="!sidebarOpen && 'justify-center px-0'"
+                    title="Jurnal & Template"
+                >
+                    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                    </svg>
+
+                    <span x-show="sidebarOpen" class="truncate">
+                        Jurnal &amp; Template
+                    </span>
+                </a>
 
                 <a
                     href="{{ route('author.revisions.index') }}"

@@ -64,7 +64,7 @@ class EditorController extends Controller
         return response()->json([
             'manuscript'     => ManuscriptSummaryResource::make($manuscript)->resolve(),
             'recommendations' => $this->editorService->getRecommendedReviewers($manuscript),
-            'reviewers'       => $this->editorService->getAssignableReviewers(),
+            'reviewers'       => $this->editorService->getAssignableReviewers([], $manuscript),
             'default_due_at'  => $this->editorService->defaultDueDate(),
         ]);
     }
@@ -117,7 +117,7 @@ class EditorController extends Controller
             'recommendations' => $reviews->contains(fn ($r) => $r->isReplaceable())
                 ? $this->editorService->getRecommendedReviewers($manuscript, $taken, 1)
                 : [],
-            'reviewers'       => $this->editorService->getAssignableReviewers($taken),
+            'reviewers'       => $this->editorService->getAssignableReviewers($taken, $manuscript),
             'default_due_at'  => $this->editorService->defaultDueDate(),
         ]);
     }
@@ -176,7 +176,7 @@ class EditorController extends Controller
             'summary'         => $this->editorService->summarizeRecommendations($reviews),
             'progress'        => $manuscript->load('currentReviews')->review_progress,
             'recommendations' => $manuscript->isRevision() ? $this->editorService->getRecommendedReviewers($manuscript) : [],
-            'reviewers'       => $manuscript->isRevision() ? $this->editorService->getAssignableReviewers() : [],
+            'reviewers'       => $manuscript->isRevision() ? $this->editorService->getAssignableReviewers([], $manuscript) : [],
             'default_due_at'  => $this->editorService->defaultDueDate(),
         ]);
     }

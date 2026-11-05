@@ -30,6 +30,7 @@ class PublicController extends Controller
             'stats'   => $this->public->stats(),
             'current' => $current,
             'archive' => $this->public->recentArchive($current),
+            'journals' => app(\App\Services\JournalService::class)->listActive(auth()->user()),
         ]);
     }
 
@@ -41,6 +42,7 @@ class PublicController extends Controller
             'articles' => $this->public->search($request->validated()),
             'fields'   => $this->public->fieldsWithArticles(),
             'filters'  => $request->validated(),
+            'journals' => \App\Models\Journal::active()->orderBy('name')->get(['id', 'name', 'slug', 'abbreviation']),
         ]);
     }
 

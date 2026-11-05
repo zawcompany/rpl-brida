@@ -43,6 +43,18 @@
         @csrf
         @if ($editingIssue) @method('PUT') @endif
 
+        @if (! $editingIssue && $journals->count() > 1)
+            <div class="sm:col-span-2 lg:col-span-5">
+                <label class="{{ $label }}" for="i-journal">Jurnal</label>
+                <select id="i-journal" name="journal_id" required class="{{ $input }}">
+                    <option value="">— Pilih jurnal —</option>
+                    @foreach ($journals as $j)
+                        <option value="{{ $j->id }}" @selected(old('journal_id') == $j->id)>{{ $j->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+        @endif
+
         <div>
             <label class="{{ $label }}" for="i-volume">Volume</label>
             <input id="i-volume" type="number" min="1" name="volume" required value="{{ old('volume', $editingIssue?->volume) }}" class="{{ $input }}">

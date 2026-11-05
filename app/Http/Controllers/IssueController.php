@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\Editor\IssueManuscriptRequest;
 use App\Http\Requests\Editor\IssueRequest;
 use App\Models\Issue;
+use App\Models\Journal;
 use App\Models\Manuscript;
 use App\Services\IssueService;
 use Closure;
@@ -37,7 +38,8 @@ class IssueController extends Controller
             'activeIssue'         => $active,
             'editingIssue'        => $editing?->isDraft() ? $editing : null,
             'issueManuscripts'    => $active ? $this->issueService->getIssueManuscripts($active) : collect(),
-            'eligibleManuscripts' => $active?->isDraft() ? $this->issueService->getEligibleManuscripts() : collect(),
+            'eligibleManuscripts' => $active?->isDraft() ? $this->issueService->getEligibleManuscripts($active) : collect(),
+            'journals'            => $this->editableJournals($request),
         ]);
     }
 
@@ -93,6 +95,14 @@ class IssueController extends Controller
             'Edisi berhasil diterbitkan. Seluruh naskahnya kini berstatus Diterbitkan.',
             $issue
         );
+    }
+
+    /** Jurnal yang boleh dipilih editor untuk edisi baru (Administrator: semua). */
+    private function editableJournals(Request $request)
+    {
+        $ids = $request->user()->editableJournalIds();
+
+        return Journal::query()->when($ids !== null, fn ($q) => $q->whereIn('id', $ids))->orderBy('name')->get(['id', 'name']);
     }
 
     /** Jalankan aksi; DomainException menjadi flash error, bukan halaman 500. */

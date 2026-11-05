@@ -39,9 +39,12 @@ class AuthorController extends Controller
 
     // ------------------------------------------------------------------ Naskah Baru
 
-    public function create(): View
+    public function create(Request $request): View
     {
-        return view('roles.author.submit', ['fields' => $this->authorService->getResearchFields()]);
+        return view('roles.author.submit', [
+            'fields'   => $this->authorService->getResearchFields(),
+            'journals' => $this->authorService->getAuthorJournals($request->user()),
+        ]);
     }
 
     public function store(SubmitManuscriptRequest $request): RedirectResponse

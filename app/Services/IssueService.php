@@ -29,10 +29,14 @@ class IssueService
     // Edisi
     // -------------------------------------------------------------------------
 
-    /** Semua edisi, terbaru di atas, beserta jumlah naskahnya. */
+    /** Edisi pada jurnal editor yang sedang login (Administrator: semua), terbaru di atas, beserta jumlah naskahnya. */
     public function getIssues(): Collection
     {
-        return Issue::withCount('manuscripts')
+        $user = auth()->user();
+
+        return Issue::inJournals($user ? $user->editableJournalIds() : [])
+            ->with('journal')
+            ->withCount('manuscripts')
             ->orderByDesc('year')->orderByDesc('volume')->orderByDesc('number')
             ->get();
     }
@@ -97,10 +101,11 @@ class IssueService
     // Penetapan naskah + file final
     // -------------------------------------------------------------------------
 
-    /** Naskah berstatus 'disetujui' yang belum masuk edisi mana pun. */
-    public function getEligibleManuscripts(): Collection
+    /** Naskah berstatus 'disetujui' pada jurnal edisi ini yang belum masuk edisi mana pun. */
+    public function getEligibleManuscripts(Issue $issue): Collection
     {
         return Manuscript::with('author:id,name')
+            ->where('journal_id', $issue->journal_id)
             ->where('status', 'disetujui')
             ->whereNull('issue_id')
             ->orderBy('title')
@@ -121,6 +126,10 @@ class IssueService
     public function attachManuscript(Issue $issue, Manuscript $manuscript, UploadedFile $finalFile): Manuscript
     {
         $this->ensureDraft($issue);
+
+        if ($manuscript->journal_id !== $issue->journal_id) {
+            throw new DomainException('Naskah ini berasal dari jurnal lain dan tidak dapat dimasukkan ke edisi ini.');
+        }
 
         $belongsHere = $manuscript->issue_id === $issue->id;
 

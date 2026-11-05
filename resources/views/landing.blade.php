@@ -54,6 +54,20 @@
     </div>
 </section>
 
+{{-- JURNAL --}}
+<x-public.section id="jurnal" tone="white" title="Jurnal" subtitle="Setiap jurnal punya kelompok penulis dan template naskah sendiri.">
+    <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        @foreach ($journals as $journal)
+            <a href="{{ route('journals.show', $journal) }}" class="flex flex-col rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition hover:shadow-md">
+                <h3 class="font-bold text-gray-900">{{ $journal->name }}</h3>
+                <p class="mt-2 flex-1 text-sm text-gray-500">{{ \Illuminate\Support\Str::limit($journal->description ?: 'Belum ada deskripsi.', 110) }}</p>
+                <p class="mt-4 text-xs font-medium text-red-600">{{ $journal->articles_count }} artikel · {{ $journal->authors_count }} penulis →</p>
+            </a>
+        @endforeach
+    </div>
+    <a href="{{ route('journals.index') }}" class="mt-6 inline-block text-sm font-semibold text-red-600 hover:underline">Lihat semua jurnal →</a>
+</x-public.section>
+
 {{-- TENTANG --}}
 <x-public.section id="tentang" title="Tentang Kami" subtitle="Visi, misi, dan tujuan penerbitan riset serta inovasi daerah.">
     <div class="grid grid-cols-1 gap-5 md:grid-cols-3">
@@ -154,7 +168,7 @@
             </div>
             <a href="{{ route('guide.template') }}" class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-red-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-                Unduh Template Naskah (.docx)
+                Pilih Jurnal &amp; Unduh Template
             </a>
         </div>
 

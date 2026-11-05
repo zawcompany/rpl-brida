@@ -23,6 +23,7 @@
     @php
         $nav = [
             ['Beranda', route('home'), request()->routeIs('home')],
+            ['Jurnal', route('journals.index'), request()->routeIs('journals.*')],
             ['Artikel', route('reader.index'), request()->routeIs('reader.*')],
             ['Arsip', route('archives.index'), request()->routeIs('archives.*')],
             ['Panduan Penulis', route('home') . '#panduan', false],

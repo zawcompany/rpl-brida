@@ -22,6 +22,20 @@
         @error('q') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
     </form>
 
+    {{-- Filter jurnal --}}
+    @if ($journals->count() > 1)
+    <div class="mt-4 flex flex-wrap items-center gap-2">
+        @php $jchip = 'rounded-full border px-4 py-1.5 text-sm transition'; @endphp
+        <span class="text-xs font-semibold uppercase tracking-wider text-gray-400">Jurnal</span>
+        <a href="{{ route('reader.index', array_filter(['q' => $filters['q'] ?? null, 'field' => $filters['field'] ?? null])) }}"
+           class="{{ $jchip }} {{ empty($filters['journal']) ? 'border-red-600 bg-red-600 text-white' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-100' }}">Semua</a>
+        @foreach ($journals as $j)
+            <a href="{{ route('reader.index', array_filter(['q' => $filters['q'] ?? null, 'field' => $filters['field'] ?? null, 'journal' => $j->slug])) }}"
+               class="{{ $jchip }} {{ ($filters['journal'] ?? null) === $j->slug ? 'border-red-600 bg-red-600 text-white' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-100' }}">{{ $j->abbreviation ?: $j->name }}</a>
+        @endforeach
+    </div>
+    @endif
+
     {{-- Filter bidang --}}
     @if ($fields->isNotEmpty())
     <div class="mt-4 flex flex-wrap gap-2">

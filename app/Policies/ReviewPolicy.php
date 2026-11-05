@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Models\Journal;
 use App\Models\Review;
 use App\Models\User;
 
@@ -20,7 +21,14 @@ class ReviewPolicy
 
     public function view(User $user, Review $review): bool
     {
-        return $this->respond($user, $review) || $user->role === 'Editor';
+        return $this->respond($user, $review) || $this->isEditorOfJournal($user, $review);
+    }
+
+    /** Editor hanya melihat review pada naskah jurnal tempat ia menjadi editor. */
+    private function isEditorOfJournal(User $user, Review $review): bool
+    {
+        return $user->role === 'Editor'
+            && in_array($review->manuscript?->journal_id, $user->journalIds(Journal::EDITOR), true);
     }
 
     public function viewFile(User $user, Review $review): bool

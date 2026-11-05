@@ -2,8 +2,10 @@
 
 namespace App\Http\Requests\Author;
 
+use App\Models\Journal;
 use App\Rules\SafeDocument;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class SubmitManuscriptRequest extends FormRequest
 {
@@ -26,6 +28,8 @@ class SubmitManuscriptRequest extends FormRequest
     public function rules(): array
     {
         return [
+            // Naskah hanya boleh dikirim ke jurnal tempat penulis sudah bergabung.
+            'journal_id'           => ['required', 'integer', Rule::in($this->user()?->journalIds(Journal::AUTHOR) ?? [])],
             'title'                => ['required', 'string', 'max:255'],
             'research_field_id'    => ['required', 'integer', 'exists:research_fields,id'],
             'abstract'             => ['required', 'string', 'max:5000'],
@@ -40,6 +44,7 @@ class SubmitManuscriptRequest extends FormRequest
     public function attributes(): array
     {
         return [
+            'journal_id'        => 'jurnal',
             'title'             => 'judul naskah',
             'research_field_id' => 'bidang keahlian',
             'abstract'          => 'abstrak',
@@ -57,6 +62,8 @@ class SubmitManuscriptRequest extends FormRequest
             'file.max'    => 'Ukuran berkas naskah maksimal 10 MB.',
             'file.uploaded' => 'Berkas gagal diunggah. Pastikan ukurannya tidak melebihi 10 MB.',
             'exists'      => ':attribute tidak valid.',
+            'journal_id.in'       => 'Anda belum bergabung di jurnal tersebut. Gabung dulu dari halaman Jurnal.',
+            'journal_id.required' => 'Pilih jurnal tujuan naskah.',
             'email'       => ':attribute tidak valid.',
         ];
     }

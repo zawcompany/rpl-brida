@@ -25,3 +25,6 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Daftar akun demo lokal (berisi password): jangan di-commit
+.demo-accounts.local.txt

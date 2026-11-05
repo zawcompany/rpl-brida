@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Services\Files\CoverImageStore;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Issue extends Model
@@ -12,11 +13,29 @@ class Issue extends Model
     public const DRAFT     = 'draft';
     public const PUBLISHED = 'published';
 
-    protected $fillable = ['volume', 'number', 'year', 'title', 'cover_image', 'status', 'published_at'];
+    protected $fillable = ['journal_id', 'volume', 'number', 'year', 'title', 'cover_image', 'status', 'published_at'];
 
     protected $casts = [
         'published_at' => 'datetime',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (Issue $issue): void {
+            $issue->journal_id ??= Journal::defaultId();
+        });
+    }
+
+    public function journal(): BelongsTo
+    {
+        return $this->belongsTo(Journal::class);
+    }
+
+    /** Batasi ke jurnal tertentu; null = tanpa pembatasan (Administrator). */
+    public function scopeInJournals(Builder $query, ?array $journalIds): Builder
+    {
+        return $journalIds === null ? $query : $query->whereIn('issues.journal_id', $journalIds);
+    }
 
     public function scopePublished(Builder $query): Builder
     {

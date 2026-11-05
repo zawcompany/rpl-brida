@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Editor;
 
 use App\Models\Issue;
+use App\Models\Journal;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -16,16 +17,32 @@ class IssueRequest extends FormRequest
         return strtolower((string) $this->user()?->role) === 'editor';
     }
 
+    /** Editor yang hanya mengelola satu jurnal tidak perlu memilih jurnal. */
+    protected function prepareForValidation(): void
+    {
+        $ids = $this->user()?->editableJournalIds();
+
+        if (! $this->route('issue') && ! $this->filled('journal_id') && is_array($ids) && count($ids) === 1) {
+            $this->merge(['journal_id' => $ids[0]]);
+        }
+    }
+
     public function rules(): array
     {
         /** @var Issue|null $issue */
         $issue = $this->route('issue');
 
+        // Jurnal ditetapkan saat edisi dibuat dan tidak berpindah; pada perubahan, jurnal edisi dipakai apa adanya.
+        $journalId = $issue?->journal_id ?? $this->input('journal_id');
+        $allowed   = $this->user()?->editableJournalIds() ?? Journal::pluck('id')->all();
+
         return [
+            'journal_id' => $issue ? [] : ['required', 'integer', Rule::in($allowed)],
             'volume' => ['required', 'integer', 'min:1', 'max:9999'],
             'number' => [
                 'required', 'integer', 'min:1', 'max:9999',
                 Rule::unique('issues')
+                    ->where('journal_id', $journalId)
                     ->where('volume', $this->input('volume'))
                     ->where('year', $this->input('year'))
                     ->ignore($issue?->id),
@@ -40,6 +57,8 @@ class IssueRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'journal_id.required' => 'Pilih jurnal untuk edisi ini.',
+            'journal_id.in'       => 'Anda bukan editor di jurnal tersebut.',
             'number.unique' => 'Edisi dengan volume, nomor, dan tahun tersebut sudah ada.',
             'cover_image.image' => 'Sampul harus berupa gambar.',
             'cover_image.mimes' => 'Sampul harus berformat JPG, PNG, atau WebP.',

@@ -66,7 +66,7 @@ class PublicReaderTest extends TestCase
             ->assertSee('Terbitan Terbaru')->assertSee('Artikel Terbaru')->assertSee($new->label)
             ->assertDontSee('Masih Draft')
             ->assertSee('Arsip Terbitan')->assertSee('Fokus')->assertSee('Panduan Penulis')
-            ->assertSee('Unduh Template Naskah');
+            ->assertSee('Pilih Jurnal');
 
         $this->get('/')->assertViewHas('stats', ['articles' => 2, 'volumes' => 2, 'downloads' => 12]);
     }
@@ -197,7 +197,8 @@ class PublicReaderTest extends TestCase
 
     public function test_author_template_is_downloadable_and_legacy_urls_redirect(): void
     {
-        $this->get(route('guide.template'))->assertOk()->assertDownload('Template-Naskah-SIMPIL.docx');
+        // URL template lama kini mengarah ke daftar jurnal (template per jurnal, khusus anggota).
+        $this->get(route('guide.template'))->assertRedirect('/jurnal');
 
         $this->get('/reader')->assertRedirect('/articles');
         $this->get('/reader/artikel/7')->assertRedirect('/articles/7');

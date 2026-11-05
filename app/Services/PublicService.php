@@ -67,7 +67,7 @@ class PublicService
         $term = $filters['q'] ?? null;
 
         return Manuscript::published()
-            ->with(['author', 'researchField', 'issue'])
+            ->with(['author', 'researchField', 'issue', 'journal'])
             ->when(filled($term), function (Builder $q) use ($term) {
                 $like = '%' . addcslashes($term, '%_\\') . '%';
 
@@ -77,6 +77,7 @@ class PublicService
             })
             ->when(filled($filters['field'] ?? null), fn (Builder $q) => $q->where('research_field_id', $filters['field']))
             ->when(filled($filters['issue'] ?? null), fn (Builder $q) => $q->where('issue_id', $filters['issue']))
+            ->when(filled($filters['journal'] ?? null), fn (Builder $q) => $q->whereHas('journal', fn (Builder $j) => $j->where('slug', $filters['journal'])))
             ->latest('published_at')->latest('id')
             ->paginate(self::PER_PAGE)
             ->withQueryString();

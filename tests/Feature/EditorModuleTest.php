@@ -136,6 +136,8 @@ class EditorModuleTest extends TestCase
         $this->makeReview($this->makeManuscript('ditinjau'), $b);
         $this->makeReview($this->makeManuscript('ditinjau'), $c, 'selesai'); // selesai tidak dihitung sebagai beban
 
+        // Daftar dibatasi ke jurnal editor yang sedang login, jadi service dipanggil sebagai editor.
+        $this->actingAs($this->editor);
         $list = app(EditorService::class)->getAssignableReviewers();
 
         $this->assertSame([$c->id, $b->id, $a->id], $list->pluck('id')->all());

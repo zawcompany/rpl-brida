@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Issue;
+use App\Models\Journal;
 use App\Models\Manuscript;
 use App\Models\Review;
 use App\Models\ResearchField;
@@ -47,6 +48,12 @@ class DatabaseSeeder extends Seeder
             ['email' => 'reviewer3@example.com'],
             ['name' => 'Reviewer Tiga', 'role' => 'Reviewer', 'password' => $password]
         );
+
+        // Semua akun contoh menjadi anggota jurnal bawaan (migrasi multijurnal membuatnya) dengan peran akunnya.
+        if ($journal = Journal::default()) {
+            User::whereIn('role', Journal::ROLES)->get()
+                ->each(fn (User $u) => $u->joinJournal($journal, $u->role));
+        }
 
         // ------------------------------------------------------------------
         // 2. Bidang Penelitian

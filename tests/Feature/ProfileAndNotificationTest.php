@@ -273,6 +273,7 @@ class ProfileAndNotificationTest extends TestCase
 
         // 1. author mengajukan -> editor
         $m = app(AuthorService::class)->submit($author, [
+            'journal_id' => \App\Models\Journal::defaultId(),
             'title' => 'Judul Uji', 'research_field_id' => $field->id, 'abstract' => 'A', 'keywords' => 'k',
         ], $this->pdf());
         $this->assertSame(1, $editor->notifications()->count());

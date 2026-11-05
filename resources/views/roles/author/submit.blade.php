@@ -34,6 +34,27 @@
       class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-6 w-full">
     @csrf
 
+    {{-- Jurnal tujuan: hanya jurnal tempat penulis sudah bergabung --}}
+    <div>
+        <label for="journal_id" class="block text-sm font-semibold text-gray-700 mb-1.5">Jurnal Tujuan <span class="text-red-500">*</span></label>
+        @if ($journals->isEmpty())
+            <div class="rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
+                Anda belum bergabung di jurnal mana pun. <a href="{{ route('journals.index') }}" class="font-semibold underline">Pilih jurnal dan bergabung</a>
+                untuk mengunduh template dan mengirim naskah.
+            </div>
+        @else
+            <select id="journal_id" name="journal_id" required
+                    class="{{ $input }} {{ $errors->has('journal_id') ? 'border-red-400' : 'border-gray-300' }}">
+                @if ($journals->count() > 1)<option value="">— Pilih Jurnal —</option>@endif
+                @foreach ($journals as $j)
+                    <option value="{{ $j->id }}" @selected(old('journal_id', $journals->count() === 1 ? $j->id : null) == $j->id)>{{ $j->name }}</option>
+                @endforeach
+            </select>
+            <p class="text-xs text-gray-400 mt-1">Gunakan template jurnal ini. <a href="{{ route('journals.index') }}" class="text-red-600 hover:underline">Unduh template</a></p>
+        @endif
+        @error('journal_id') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
+    </div>
+
     {{-- Judul --}}
     <div>
         <label for="title" class="block text-sm font-semibold text-gray-700 mb-1.5">Judul Naskah <span class="text-red-500">*</span></label>
