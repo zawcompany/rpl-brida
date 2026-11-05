@@ -17,9 +17,9 @@ class CoverImageStore
     public const PLACEHOLDER = 'images/issue-cover-placeholder.svg';
 
     /** Simpan dengan nama acak; mengembalikan path relatif untuk kolom cover_image. */
-    public function put(UploadedFile $image): string
+    public function put(UploadedFile $image, string $directory = self::DIRECTORY): string
     {
-        return $image->store(self::DIRECTORY, ['disk' => $this->diskName()]);
+        return $image->store($directory, ['disk' => $this->diskName()]);
     }
 
     public function delete(?string $path): void
@@ -33,6 +33,12 @@ class CoverImageStore
     public function url(?string $path): string
     {
         return $path ? Storage::disk($this->diskName())->url($path) : asset(self::PLACEHOLDER);
+    }
+
+    /** URL gambar, atau null bila tidak ada (pemanggil memilih tampilan cadangannya sendiri). */
+    public function urlOrNull(?string $path): ?string
+    {
+        return $path ? Storage::disk($this->diskName())->url($path) : null;
     }
 
     private function diskName(): string

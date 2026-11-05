@@ -326,7 +326,7 @@
             <div class="space-y-1">
 
                 <a
-                    href="{{ route('journals.index') }}"
+                    href="{{ route('journals.index', ['dari' => 'dashboard']) }}"
                     class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors {{ request()->routeIs('journals.*') ? 'bg-red-50 text-red-700 font-medium' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}"
                     :class="!sidebarOpen && 'justify-center px-0'"
                     title="Jurnal & Template"

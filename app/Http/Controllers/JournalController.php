@@ -44,8 +44,8 @@ class JournalController extends Controller
             'canJoin'   => $user?->role === Journal::AUTHOR,
             'canManage' => $user && ($user->isAdmin() || in_array($journal->id, $user->journalIds(Journal::EDITOR), true)),
             'issues'    => Issue::where('journal_id', $journal->id)->published()
-                ->withCount(['manuscripts as articles_count' => fn ($q) => $q->published()])
-                ->orderByDesc('year')->orderByDesc('volume')->orderByDesc('number')->limit(6)->get(),
+                ->with('journal')
+                ->orderByDesc('year')->orderByDesc('volume')->orderByDesc('number')->limit(12)->get(),
         ]);
     }
 

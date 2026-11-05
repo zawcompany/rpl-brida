@@ -39,20 +39,27 @@ class PublicService
         ];
     }
 
-    /** Edisi terbit paling baru beserta artikelnya (eager loading), atau null bila belum ada. */
-    public function currentIssue(): ?Issue
+    /**
+     * Terbitan terbaru: edisi terbit paling baru dari setiap jurnal aktif (satu per jurnal), terbaru di depan.
+     * Bukan terikat bulan kalender: jurnal yang terakhir terbit tahun lalu tetap menampilkan edisi terakhirnya.
+     */
+    public function latestIssues(): Collection
     {
         return Issue::published()
+            ->whereHas('journal', fn (Builder $q) => $q->active())
+            ->with('journal')
             ->orderByDesc('year')->orderByDesc('volume')->orderByDesc('number')
-            ->with(['manuscripts' => fn ($q) => $q->published()->with(['author', 'researchField'])->orderBy('id')])
-            ->first();
+            ->get()
+            ->unique('journal_id')
+            ->values();
     }
 
-    /** Edisi terbit terbaru (selain edisi aktif) untuk ringkasan arsip di beranda. */
-    public function recentArchive(?Issue $exclude = null): Collection
+    /** Edisi terbit terbaru selain $exclude (biasanya terbitan terbaru) untuk ringkasan arsip di beranda. */
+    public function recentArchive(?Collection $exclude = null): Collection
     {
         return $this->publishedIssues()
-            ->when($exclude, fn (Builder $q) => $q->whereKeyNot($exclude->id))
+            ->with('journal')
+            ->when($exclude && $exclude->isNotEmpty(), fn (Builder $q) => $q->whereNotIn('issues.id', $exclude->modelKeys()))
             ->limit(self::HOME_ARCHIVE_ISSUES)
             ->get();
     }
@@ -92,7 +99,7 @@ class PublicService
     /** Arsip: edisi terbit dikelompokkan per tahun (terbaru dulu). @return \Illuminate\Support\Collection<int, Collection> */
     public function archives(): \Illuminate\Support\Collection
     {
-        return $this->publishedIssues()->get()->groupBy('year');
+        return $this->publishedIssues()->with('journal')->get()->groupBy('year');
     }
 
     /** @throws \Symfony\Component\HttpKernel\Exception\NotFoundHttpException bila edisi belum terbit */
@@ -100,7 +107,10 @@ class PublicService
     {
         abort_unless($issue->isPublished(), 404);
 
-        return $issue->load(['manuscripts' => fn ($q) => $q->published()->with(['author', 'researchField'])->orderBy('id')]);
+        return $issue->load([
+            'journal',
+            'manuscripts' => fn ($q) => $q->published()->with(['author', 'researchField'])->orderBy('id'),
+        ]);
     }
 
     // -------------------------------------------------------------------------

@@ -12,7 +12,7 @@
             <h3 class="mb-3 border-b border-gray-200 pb-2 text-lg font-bold text-gray-900">{{ $year }}</h3>
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 @foreach ($issues as $issue)
-                    <a href="{{ route('archives.show', $issue) }}" class="flex gap-4 rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition hover:shadow-md">
+                    <a href="{{ route('archives.show', ['issue' => $issue] + \App\Support\Nav::keep()) }}" class="flex gap-4 rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition hover:shadow-md">
                         <x-public.issue-cover :issue="$issue" />
                         <div>
                             <p class="font-semibold text-gray-900">{{ $issue->label }}</p>

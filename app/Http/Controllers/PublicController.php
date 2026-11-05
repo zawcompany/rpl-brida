@@ -24,12 +24,12 @@ class PublicController extends Controller
 
     public function home(): View
     {
-        $current = $this->public->currentIssue();
+        $latest = $this->public->latestIssues();
 
         return view('landing', [
-            'stats'   => $this->public->stats(),
-            'current' => $current,
-            'archive' => $this->public->recentArchive($current),
+            'stats'    => $this->public->stats(),
+            'latest'   => $latest,
+            'archive'  => $this->public->recentArchive($latest),
             'journals' => app(\App\Services\JournalService::class)->listActive(auth()->user()),
         ]);
     }

@@ -56,13 +56,9 @@
 
 {{-- JURNAL --}}
 <x-public.section id="jurnal" tone="white" title="Jurnal" subtitle="Setiap jurnal punya kelompok penulis dan template naskah sendiri.">
-    <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+    <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4">
         @foreach ($journals as $journal)
-            <a href="{{ route('journals.show', $journal) }}" class="flex flex-col rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition hover:shadow-md">
-                <h3 class="font-bold text-gray-900">{{ $journal->name }}</h3>
-                <p class="mt-2 flex-1 text-sm text-gray-500">{{ \Illuminate\Support\Str::limit($journal->description ?: 'Belum ada deskripsi.', 110) }}</p>
-                <p class="mt-4 text-xs font-medium text-red-600">{{ $journal->articles_count }} artikel · {{ $journal->authors_count }} penulis →</p>
-            </a>
+            <x-public.journal-card :journal="$journal" :joined="$journal->joined" />
         @endforeach
     </div>
     <a href="{{ route('journals.index') }}" class="mt-6 inline-block text-sm font-semibold text-red-600 hover:underline">Lihat semua jurnal →</a>
@@ -91,27 +87,15 @@
 </x-public.section>
 
 {{-- TERBITAN TERBARU --}}
-<x-public.section id="terbitan" tone="white" title="Terbitan Terbaru"
-    :subtitle="$current ? $current->label . ($current->title ? ' — ' . $current->title : '') : 'Edisi terbaru yang telah diterbitkan.'">
-    @if ($current)
-        <div class="mb-8 flex items-center gap-4">
-            <x-public.issue-cover :issue="$current" class="h-40 w-30 flex-shrink-0 rounded-lg border border-gray-200 bg-gray-100 object-cover shadow-sm" />
-            <div>
-                <p class="text-lg font-bold text-gray-900">{{ $current->label }}</p>
-                @if ($current->title)<p class="text-sm text-gray-500">{{ $current->title }}</p>@endif
-            </div>
-        </div>
-    @endif
-
-    @if ($current && $current->manuscripts->isNotEmpty())
-        <div class="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
-            @foreach ($current->manuscripts as $article)
-                <x-public.article-card :article="$article->setRelation('issue', $current)" :show-issue="false" />
+<x-public.section id="terbitan" tone="white" title="Terbitan Terbaru" subtitle="Edisi terbaru dari setiap jurnal.">
+    @if ($latest->isNotEmpty())
+        <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5 lg:grid-cols-5">
+            @foreach ($latest as $issue)
+                <x-public.issue-tile :issue="$issue" />
             @endforeach
         </div>
-        <div class="mt-8 flex flex-wrap gap-3">
-            <a href="{{ route('archives.show', $current) }}" class="rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50">Lihat Seluruh Edisi Ini</a>
-            <a href="{{ route('reader.index') }}" class="rounded-lg px-5 py-2.5 text-sm font-semibold text-red-600 transition hover:bg-red-50">Telusuri Semua Artikel</a>
+        <div class="mt-8">
+            <a href="{{ route('reader.index') }}" class="rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50">Telusuri Semua Artikel</a>
         </div>
     @else
         <div class="rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 p-10 text-center text-sm text-gray-500">
@@ -166,10 +150,6 @@
                     <li>Penulis pendamping dicantumkan pada form pengajuan.</li>
                 </ul>
             </div>
-            <a href="{{ route('guide.template') }}" class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-red-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-                Pilih Jurnal &amp; Unduh Template
-            </a>
         </div>
 
         <ol class="lg:col-span-3 grid grid-cols-1 gap-4 sm:grid-cols-2">

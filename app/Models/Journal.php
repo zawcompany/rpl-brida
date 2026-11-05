@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Files\CoverImageStore;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -21,7 +22,7 @@ class Journal extends Model
     public const ROLES = [self::AUTHOR, self::EDITOR, self::REVIEWER];
 
     protected $fillable = [
-        'name', 'abbreviation', 'slug', 'description',
+        'name', 'abbreviation', 'field', 'slug', 'description', 'cover_image',
         'template_path', 'template_original_name', 'template_version', 'is_active',
     ];
 
@@ -92,6 +93,18 @@ class Journal extends Model
         return $this->template_path === null
             && $this->id === static::defaultId()
             && is_file(resource_path('templates/template-naskah.docx'));
+    }
+
+    /** URL cover, atau null bila belum diunggah (tampilan memakai sampul gradasi dari nama jurnal). */
+    public function getCoverUrlAttribute(): ?string
+    {
+        return $this->cover_image ? app(CoverImageStore::class)->urlOrNull($this->cover_image) : null;
+    }
+
+    /** Huruf awal untuk sampul bawaan: singkatan, atau dua huruf pertama nama. */
+    public function getInitialsAttribute(): string
+    {
+        return Str::upper(Str::limit($this->abbreviation ?: Str::substr($this->name, 0, 2), 4, ''));
     }
 
     /** "SIMPIL" atau, bila singkatan kosong, nama lengkap. */

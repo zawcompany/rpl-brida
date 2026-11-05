@@ -7,7 +7,10 @@ use App\Models\Journal;
 use App\Models\Manuscript;
 use App\Models\Review;
 use App\Models\User;
+use App\Services\Files\CoverImageStore;
 use DomainException;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 
 /**
@@ -78,8 +81,21 @@ class JournalService
     // Kelola jurnal (admin)
     // -------------------------------------------------------------------------
 
-    public function create(array $data): Journal
+    /** Cover jurnal disimpan di disk sampul (bukan disk privat naskah), pada folder tersendiri. */
+    private const COVER_DIRECTORY = 'journals/covers';
+
+    public function __construct(private readonly CoverImageStore $covers)
     {
+    }
+
+    public function create(array $data, ?UploadedFile $cover = null): Journal
+    {
+        $data = Arr::except($data, 'cover');
+
+        if ($cover) {
+            $data['cover_image'] = $this->covers->put($cover, self::COVER_DIRECTORY);
+        }
+
         $journal = Journal::create($data + ['is_active' => true]);
 
         ActivityLog::record('journal.created', "Jurnal baru dibuat: {$journal->name}");
@@ -87,9 +103,30 @@ class JournalService
         return $journal;
     }
 
-    public function update(Journal $journal, array $data): Journal
+    /** Cover baru menggantikan yang lama; berkas lama dihapus setelah database berhasil diperbarui. */
+    public function update(Journal $journal, array $data, ?UploadedFile $cover = null, bool $removeCover = false): Journal
     {
-        $journal->update($data);
+        $data = Arr::except($data, ['cover', 'remove_cover']);
+        $old  = $journal->cover_image;
+
+        if ($cover) {
+            $data['cover_image'] = $this->covers->put($cover, self::COVER_DIRECTORY);
+        } elseif ($removeCover) {
+            $data['cover_image'] = null;
+        }
+
+        try {
+            $journal->update($data);
+        } catch (\Throwable $e) {
+            if ($cover) {
+                $this->covers->delete($data['cover_image']); // jangan tinggalkan berkas yatim
+            }
+            throw $e;
+        }
+
+        if (($cover || $removeCover) && $old) {
+            $this->covers->delete($old);
+        }
 
         return $journal;
     }

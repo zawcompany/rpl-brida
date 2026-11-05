@@ -63,10 +63,10 @@ class PublicReaderTest extends TestCase
 
         $this->get('/')->assertOk()
             ->assertSee('Ajukan Naskah')->assertSee('Telusuri Artikel')
-            ->assertSee('Terbitan Terbaru')->assertSee('Artikel Terbaru')->assertSee($new->label)
+            ->assertSee('Terbitan Terbaru')->assertSee($new->label)->assertDontSee('Artikel Terbaru')
             ->assertDontSee('Masih Draft')
             ->assertSee('Arsip Terbitan')->assertSee('Fokus')->assertSee('Panduan Penulis')
-            ->assertSee('Pilih Jurnal');
+            ->assertDontSee('Pilih Jurnal');
 
         $this->get('/')->assertViewHas('stats', ['articles' => 2, 'volumes' => 2, 'downloads' => 12]);
     }

@@ -93,6 +93,18 @@
         </div>
     </header>
 
+    {{-- Dari dashboard: tombol kembali tanpa perlu membuka menu Dashboard --}}
+    @if (\App\Support\Nav::fromDashboard())
+        <div class="border-b border-gray-100 bg-white">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5">
+                <a href="{{ route('dashboard') }}" class="inline-flex items-center gap-1.5 text-sm font-semibold text-red-600 transition hover:text-red-700">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                    Kembali ke Dashboard
+                </a>
+            </div>
+        </div>
+    @endif
+
     {{-- ISI HALAMAN --}}
     <main class="flex-1">
         @yield('content')

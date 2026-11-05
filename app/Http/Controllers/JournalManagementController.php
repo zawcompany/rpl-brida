@@ -42,10 +42,12 @@ class JournalManagementController extends Controller
         $data = $request->validate([
             'name'         => ['required', 'string', 'max:255', 'unique:journals,name'],
             'abbreviation' => ['nullable', 'string', 'max:30'],
+            'field'        => ['nullable', 'string', 'max:120'],
             'description'  => ['nullable', 'string', 'max:2000'],
-        ]);
+            'cover'        => $this->coverRules(),
+        ], $this->coverMessages());
 
-        $journal = $this->journals->create($data);
+        $journal = $this->journals->create($data, $request->file('cover'));
 
         return redirect()->route('admin.journals.show', $journal)->with('success', "Jurnal {$journal->name} dibuat. Tunjuk editor dan unggah templatenya.");
     }
@@ -60,12 +62,14 @@ class JournalManagementController extends Controller
         $data = $request->validate([
             'name'         => ['required', 'string', 'max:255', Rule::unique('journals', 'name')->ignore($journal->id)],
             'abbreviation' => ['nullable', 'string', 'max:30'],
+            'field'        => ['nullable', 'string', 'max:120'],
             'description'  => ['nullable', 'string', 'max:2000'],
             'is_active'    => ['nullable', 'boolean'],
-        ]);
+            'cover'        => $this->coverRules(),
+        ], $this->coverMessages());
         $data['is_active'] = $request->boolean('is_active');
 
-        $this->journals->update($journal, $data);
+        $this->journals->update($journal, $data, $request->file('cover'), $request->boolean('remove_cover'));
 
         return back()->with('success', 'Data jurnal diperbarui.');
     }
@@ -103,6 +107,23 @@ class JournalManagementController extends Controller
     }
 
     // ------------------------------------------------------------------ util
+
+    /** Aturan unggah cover: gambar sungguhan (bukan sekadar ekstensi), batas ukuran dan resolusi sama dengan sampul edisi. */
+    private function coverRules(): array
+    {
+        return ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:' . config('simpil.upload.cover_kb'), 'dimensions:min_width=50,min_height=50,max_width=6000,max_height=6000'];
+    }
+
+    private function coverMessages(): array
+    {
+        return [
+            'cover.image'      => 'Cover harus berupa gambar.',
+            'cover.mimes'      => 'Cover harus berformat JPG, PNG, atau WebP.',
+            'cover.max'        => 'Ukuran cover maksimal 2 MB.',
+            'cover.dimensions' => 'Berkas bukan gambar yang valid, atau resolusinya di luar batas (50 sampai 6000 piksel).',
+            'cover.uploaded'   => 'Cover gagal diunggah. Pastikan ukurannya tidak melebihi 2 MB.',
+        ];
+    }
 
     /** Admin mengelola semua jurnal; editor hanya jurnalnya sendiri. */
     private function authorizeJournal(Request $request, Journal $journal): void
