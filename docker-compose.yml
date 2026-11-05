@@ -1,0 +1,78 @@
+# SIMPIL — lingkungan DEVELOPMENT lokal: Nginx + PHP-FPM (Laravel) + MySQL (+ worker antrean & Vite).
+#   cp .env.docker.example .env && docker compose run --rm app php artisan key:generate --show   (isi APP_KEY)
+#   docker compose up -d --build        -> http://localhost:8080
+# Produksi memakai image target "app" & "web" dari Dockerfile (lihat deploy/aws/ECS-DEPLOY.md), bukan file ini.
+
+x-php: &php
+  build:
+    context: .
+    target: base                      # PHP-FPM + ekstensi; kode di-bind-mount agar edit langsung terlihat
+  working_dir: /var/www/html
+  volumes:
+    - .:/var/www/html
+  env_file: .env
+  environment: &php-env
+    APP_ENV: local
+    APP_DEBUG: "true"
+    DB_HOST: db                       # menimpa nilai di .env agar menunjuk container MySQL
+    DB_PORT: 3306
+    PHP_OPCACHE_VALIDATE: "1"         # dev: kode berubah tanpa restart
+    RUN_MIGRATIONS: "false"
+  depends_on:
+    db:
+      condition: service_healthy
+
+services:
+  app:
+    <<: *php
+    environment:
+      <<: *php-env
+      RUN_MIGRATIONS: "true"          # dev: migrasi otomatis saat start
+
+  queue:
+    <<: *php
+    command: php artisan queue:work --sleep=3 --tries=3 --max-time=3600
+    depends_on:
+      - app                           # menunggu app selesai bermigrasi/pasang vendor
+
+  web:
+    build:
+      context: .
+      target: web
+    environment:
+      PHP_FPM_HOST: app
+    ports:
+      - "8080:80"
+    volumes:
+      - ./public:/var/www/html/public:ro   # aset & kode statis langsung dari host
+    depends_on:
+      - app
+
+  db:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:?isi DB_DATABASE di .env}
+      MYSQL_USER: ${DB_USERNAME:?isi DB_USERNAME di .env (bukan root)}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?isi DB_PASSWORD di .env}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?isi DB_ROOT_PASSWORD di .env}
+    ports:
+      - "3307:3306"                   # akses dari host (DBeaver, dsb.) tanpa bentrok MySQL lokal
+    volumes:
+      - dbdata:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-p${DB_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  vite:
+    image: node:20-alpine
+    working_dir: /var/www/html
+    volumes:
+      - .:/var/www/html
+    command: sh -c "npm ci --no-audit --no-fund && npm run dev -- --host 0.0.0.0"
+    ports:
+      - "5173:5173"
+
+volumes:
+  dbdata:

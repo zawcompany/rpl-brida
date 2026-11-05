@@ -1,0 +1,97 @@
+# SIMPIL — satu server (mis. 1 EC2) dengan Docker Compose. Untuk tugas/demo, BUKAN arsitektur produksi berskala.
+#   cp .env.ec2.example .env   (isi nilai)  ->  docker compose -f docker-compose.ec2.yml up -d --build
+# Semua di satu mesin: Nginx + PHP-FPM + worker antrean + MySQL. Berkas disimpan di volume Docker lokal.
+# Akses: http://<IP-publik-EC2>/
+
+x-app: &app
+  image: simpil-app:local
+  env_file: .env
+  working_dir: /var/www/html
+  restart: unless-stopped
+  environment: &app-env
+    APP_ENV: production
+    APP_DEBUG: "false"
+    DB_HOST: db
+    DB_PORT: 3306
+    RUN_MIGRATIONS: "false"
+  volumes:
+    - storage:/var/www/html/storage
+    - publicdisk:/var/www/html/storage/app/public   # sampul edisi; juga dibaca Nginx lewat /storage
+
+services:
+  # Satu kali jalan: pastikan volume bisa ditulis www-data (volume baru dimiliki root).
+  perms:
+    image: simpil-app:local
+    user: root
+    entrypoint: ["sh", "-c"]
+    command: ["mkdir -p storage/app/private storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs && chown -R www-data:www-data storage"]
+    working_dir: /var/www/html
+    volumes:
+      - storage:/var/www/html/storage
+      - publicdisk:/var/www/html/storage/app/public
+    depends_on:
+      app-build:
+        condition: service_completed_successfully
+
+  # Hanya untuk membangun image sekali; langsung selesai.
+  app-build:
+    build:
+      context: .
+      target: app
+    image: simpil-app:local
+    entrypoint: ["true"]
+    command: []
+
+  app:
+    <<: *app
+    environment:
+      <<: *app-env
+      RUN_MIGRATIONS: "true"
+    depends_on:
+      db:
+        condition: service_healthy
+      perms:
+        condition: service_completed_successfully
+
+  queue:
+    <<: *app
+    command: php artisan queue:work --sleep=3 --tries=3 --backoff=10 --max-time=3600
+    depends_on:
+      app:
+        condition: service_started
+
+  web:
+    build:
+      context: .
+      target: web
+    restart: unless-stopped
+    environment:
+      PHP_FPM_HOST: app
+    ports:
+      - "80:80"
+    volumes:
+      - publicdisk:/var/www/html/public/storage:ro
+    depends_on:
+      - app
+
+  db:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:?isi DB_DATABASE di .env}
+      MYSQL_USER: ${DB_USERNAME:?isi DB_USERNAME di .env}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?isi DB_PASSWORD di .env}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?isi DB_ROOT_PASSWORD di .env}
+    # Tidak ada "ports": MySQL hanya bisa dijangkau container lain, tidak dari internet.
+    volumes:
+      - dbdata:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-p${DB_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  dbdata:
+  storage:
+  publicdisk:
