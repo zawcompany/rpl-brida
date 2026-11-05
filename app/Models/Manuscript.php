@@ -70,10 +70,15 @@ class Manuscript extends Model
     /** Jumlah reviewer anonim yang wajib menyelesaikan review sebelum editor memutuskan. */
     public const REQUIRED_REVIEWERS = 3;
 
-    /** Keputusan editorial akhir -> status naskah. Revisi minor & mayor sama-sama dikembalikan ke author. */
+    /**
+     * Keputusan editorial akhir -> status naskah.
+     * Revisi mayor dikembalikan ke author (unggah revisi lalu review ronde berikutnya).
+     * Revisi minor diselesaikan editor sendiri: naskah langsung 'disetujui' dan editor mengunggah berkas final
+     * (lewat menu Edisi) tanpa melibatkan author lagi.
+     */
     public const DECISION_STATUS = [
         'diterima'     => 'disetujui',
-        'revisi_minor' => 'revisi',
+        'revisi_minor' => 'disetujui',
         'revisi_mayor' => 'revisi',
         'ditolak'      => 'ditolak',
     ];

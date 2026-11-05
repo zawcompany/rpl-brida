@@ -188,7 +188,7 @@ class ReviewerService
     /** Kolom hasil review yang boleh ditulis (whitelist) + lampiran bila ada. */
     private function resultAttributes(array $data, ?UploadedFile $file, Review $review): array
     {
-        $attributes = array_intersect_key($data, array_flip([...array_keys(Review::RUBRIC), 'comments', 'recommendation']));
+        $attributes = array_intersect_key($data, array_flip([...array_keys(Review::RUBRIC), 'comments', 'notes_for_editor', 'recommendation']));
 
         if ($file) {
             $attributes['review_file_path'] = $this->files->put($file, "reviews/{$review->id}");

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\ActivityLog;
+use App\Models\Journal;
 use App\Models\ResearchField;
 use App\Models\User;
 use Illuminate\Support\Arr;
@@ -22,6 +23,7 @@ class ProfileService
         private readonly AuthorService $authors,
         private readonly EditorService $editors,
         private readonly AdminService $admins,
+        private readonly ResearchFieldService $fields,
     ) {
     }
 
@@ -40,10 +42,7 @@ class ProfileService
                 ['label' => 'Review Selesai', 'value' => $user->reviews()->where('status', 'selesai')->count()],
                 ['label' => 'Batas Beban',    'value' => User::MAX_ACTIVE_REVIEWS],
             ],
-            'Administrator' => [
-                ['label' => 'Total Pengguna', 'value' => $this->admins->getDashboardStats()['total_users']],
-                ['label' => 'Total Naskah',   'value' => $this->admins->getDashboardStats()['total_manuscripts']],
-            ],
+            'Administrator' => $this->adminSummary(),
             default         => [],
         };
     }
@@ -51,7 +50,7 @@ class ProfileService
     /** Bidang keahlian hanya relevan untuk Reviewer (dasar rekomendasi penugasan). */
     public function expertiseOptions(User $user): ?Collection
     {
-        return $user->role === 'Reviewer' ? ResearchField::orderBy('name')->get(['id', 'name']) : null;
+        return $user->role === 'Reviewer' ? $this->fields->options() : null;
     }
 
     // -------------------------------------------------------------------------
@@ -109,6 +108,18 @@ class ProfileService
     }
 
     // -------------------------------------------------------------------------
+
+    /** Ringkasan admin: pengguna, naskah, dan total jurnal (statistik dihitung sekali). */
+    private function adminSummary(): array
+    {
+        $stats = $this->admins->getDashboardStats();
+
+        return [
+            ['label' => 'Total Pengguna', 'value' => $stats['total_users']],
+            ['label' => 'Total Naskah',   'value' => $stats['total_manuscripts']],
+            ['label' => 'Total Jurnal',   'value' => Journal::count()],
+        ];
+    }
 
     private function fromWidgets(array $widgets): array
     {

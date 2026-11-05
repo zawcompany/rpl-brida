@@ -18,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => \App\Http\Middleware\EnsureRole::class,
             'journal.access' => \App\Http\Middleware\EnsureJournalAccess::class,
+            'no-back' => \App\Http\Middleware\PreventBackHistory::class,
         ]);
         $middleware->appendToGroup('web', \App\Http\Middleware\EnsureAccountActive::class);
     })

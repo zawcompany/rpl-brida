@@ -26,6 +26,7 @@ class SubmitReviewRequest extends FormRequest
 
         return $rubric + [
             'comments'       => ['required', 'string', 'min:10', 'max:5000'],
+            'notes_for_editor' => ['nullable', 'string', 'max:3000'],
             'recommendation' => ['required', Rule::in(array_keys(Review::RECOMMENDATION_LABELS))],
             'review_file'    => ['nullable', 'file', new SafeDocument(['pdf', 'docx']), 'max:' . config('simpil.upload.manuscript_kb')],
         ];
@@ -35,6 +36,7 @@ class SubmitReviewRequest extends FormRequest
     {
         return Review::RUBRIC + [
             'comments'       => 'komentar reviewer',
+            'notes_for_editor' => 'catatan untuk editor',
             'recommendation' => 'rekomendasi',
             'review_file'    => 'berkas catatan review',
         ];

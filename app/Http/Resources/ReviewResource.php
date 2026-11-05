@@ -30,6 +30,7 @@ class ReviewResource extends JsonResource
             'can_remind'           => $this->isActive(),
             'can_replace'          => $this->isReplaceable(),
             'comments'             => $this->comments,
+            'notes_for_editor'     => $this->notes_for_editor, // khusus editor; tidak pernah dikirim ke author
             'scores'               => collect(Review::RUBRIC)->map(fn (string $label, string $key) => ['label' => $label, 'value' => $this->{$key}])->values()->all(),
             'score_average'        => $this->score_average,
             'file_name'            => $this->review_file_name,

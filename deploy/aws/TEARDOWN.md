@@ -27,6 +27,7 @@ aws ecr delete-repository --repository-name simpil-web --force --region $R
 # 6. CloudWatch Logs & SSM
 aws logs delete-log-group --log-group-name /simpil/ec2 --region $R
 aws ssm delete-parameter --name /simpil/env --region $R
+aws ssm delete-parameter --name /simpil/image-tag --region $R
 
 # 7. SES identitas email
 aws sesv2 delete-email-identity --email-identity wildaniza23d@student.unhas.ac.id --region $R

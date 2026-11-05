@@ -46,6 +46,7 @@ class Review extends Model
         'reviewer_id',
         'assigned_by',
         'comments',
+        'notes_for_editor',
         'recommendation',
         'relevansi_topik',
         'metodologi_penelitian',

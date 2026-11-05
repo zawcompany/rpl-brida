@@ -94,7 +94,7 @@ class NotificationService
     }
 
     /** Keputusan editorial akhir (disetujui / revisi minor|mayor / ditolak). */
-    public function editorialDecision(Manuscript $manuscript, ?string $decisionLabel = null): void
+    public function editorialDecision(Manuscript $manuscript, ?string $decisionLabel = null, bool $editorRevises = false): void
     {
         [$type, $title, $route] = match ($manuscript->status) {
             'revisi'    => ['manuscript.revision', 'Naskah perlu revisi', 'author.revisions.index'],
@@ -106,7 +106,8 @@ class NotificationService
             $manuscript->author_id,
             $type,
             $title,
-            "Keputusan editor untuk \"{$manuscript->title}\": " . ($decisionLabel ?? $manuscript->status_label) . ".",
+            "Keputusan editor untuk \"{$manuscript->title}\": " . ($decisionLabel ?? $manuscript->status_label) . '.'
+                . ($editorRevises ? ' Perbaikan minor akan diselesaikan editor; Anda tidak perlu mengunggah ulang naskah.' : ''),
             route($route, absolute: false)
         );
     }

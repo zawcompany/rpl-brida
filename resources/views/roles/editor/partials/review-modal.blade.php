@@ -46,6 +46,10 @@
                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
                               :class="rv.recommendation_class" x-text="rv.recommendation_label"></span>
                         <p class="text-sm text-gray-700 mt-2 whitespace-pre-line" x-text="rv.comments || 'Tanpa catatan.'"></p>
+                        <p x-show="rv.notes_for_editor" class="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 whitespace-pre-line">
+                            <span class="block text-xs font-semibold uppercase tracking-wider text-amber-700">Catatan rahasia untuk editor</span>
+                            <span x-text="rv.notes_for_editor"></span>
+                        </p>
                     </div>
                     <div class="px-4 py-3" x-show="rv.can_replace">
                         <button type="button" @click="startReplace(rv.id)"

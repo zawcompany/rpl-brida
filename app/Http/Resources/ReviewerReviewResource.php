@@ -45,6 +45,7 @@ class ReviewerReviewResource extends JsonResource
                 'scores'               => $this->scores,
                 'score_average'        => $this->score_average,
                 'comments'             => $this->comments,
+                'notes_for_editor'     => $this->notes_for_editor,
                 'recommendation'       => $this->recommendation,
                 'recommendation_label' => $this->recommendation_label,
                 'file_name'            => $this->review_file_name,

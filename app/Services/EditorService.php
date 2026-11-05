@@ -385,7 +385,8 @@ class EditorService
     // -------------------------------------------------------------------------
 
     /**
-     * Revisi minor/mayor mengembalikan naskah ke author (status 'revisi').
+     * Revisi mayor mengembalikan naskah ke author (status 'revisi'). Revisi minor diselesaikan editor sendiri:
+     * status 'disetujui', author tidak diminta mengunggah ulang.
      *
      * @param string $decision kunci dari Manuscript::DECISION_STATUS (diterima|revisi_minor|revisi_mayor|ditolak)
      * @throws DomainException bila naskah tidak sedang menunggu keputusan
@@ -400,7 +401,7 @@ class EditorService
             'decided_at'     => now(),
         ]);
 
-        $this->notifier->editorialDecision($manuscript, Manuscript::DECISION_LABELS[$decision]);
+        $this->notifier->editorialDecision($manuscript, Manuscript::DECISION_LABELS[$decision], $decision === 'revisi_minor');
 
         return $manuscript;
     }

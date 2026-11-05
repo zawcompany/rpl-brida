@@ -209,7 +209,8 @@ class AuthorService
     // -------------------------------------------------------------------------
 
     /**
-     * Komentar reviewer untuk author — anonim (tanpa identitas reviewer).
+     * Komentar reviewer untuk author — anonim (tanpa identitas reviewer). Hanya `comments`;
+     * `notes_for_editor` bersifat rahasia (khusus editor) dan sengaja tidak pernah disertakan.
      *
      * @return array<int, array{label: string, recommendation: ?string, recommendation_class: string, comments: string}>
      */

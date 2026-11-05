@@ -27,8 +27,8 @@
                     Password <span class="text-red-500" x-show="!userId">*</span>
                     <span class="font-normal text-gray-400" x-show="userId">(kosongkan bila tidak diganti)</span>
                 </label>
-                <input id="u-password" type="password" x-model="form.password" minlength="8" autocomplete="new-password"
-                       placeholder="Minimal 8 karakter" class="w-full text-sm border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-red-500 focus:border-red-500">
+                <x-password-input id="u-password" x-model="form.password" minlength="8" autocomplete="new-password"
+                       placeholder="Minimal 8 karakter" class="w-full text-sm border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-red-500 focus:border-red-500" />
             </div>
             <div>
                 <label class="block text-xs font-semibold text-gray-600 mb-1.5" for="u-role">Role <span class="text-red-500">*</span></label>

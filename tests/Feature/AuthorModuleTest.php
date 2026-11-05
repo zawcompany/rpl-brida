@@ -231,6 +231,21 @@ class AuthorModuleTest extends TestCase
             ->getJson(route('author.revisions.detail', $this->makeManuscript('ditinjau')))->assertNotFound();
     }
 
+    public function test_author_never_sees_reviewer_confidential_note(): void
+    {
+        $m = $this->makeManuscript('revisi', null, ['editorial_note' => 'Catatan editor', 'decided_at' => now()]);
+        Review::create([
+            'manuscript_id' => $m->id, 'reviewer_id' => $this->makeUser('Reviewer')->id, 'assigned_by' => $this->makeUser('Editor')->id,
+            'status' => 'selesai', 'recommendation' => 'revisi_mayor', 'completed_at' => now(),
+            'comments' => 'Perjelas metodologi', 'notes_for_editor' => 'RAHASIA-DUGAAN-PLAGIAT',
+        ]);
+
+        $res = $this->actingAs($this->author)->getJson(route('author.revisions.detail', $m))->assertOk();
+        $this->assertSame('Perjelas metodologi', $res->json('reviews.0.comments'));
+        $this->assertStringNotContainsString('RAHASIA-DUGAAN-PLAGIAT', $res->getContent());
+        $this->assertStringNotContainsString('notes_for_editor', $res->getContent());
+    }
+
     public function test_upload_revision_moves_manuscript_to_editor_decision_queue(): void
     {
         $m = $this->makeManuscript('revisi');

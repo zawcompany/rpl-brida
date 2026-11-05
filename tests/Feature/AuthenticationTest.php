@@ -64,4 +64,13 @@ class AuthenticationTest extends TestCase
         // Memastikan user tidak terautentikasi
         $this->assertGuest();
     }
+
+    public function test_halaman_login_tidak_boleh_di_cache_browser_dan_user_yang_masuk_dialihkan()
+    {
+        $this->assertStringContainsString('no-store', $this->get('/login')->assertOk()->headers->get('Cache-Control'));
+
+        // Tombol Back -> muat ulang dari server -> middleware guest mengalihkan ke dashboard
+        $user = User::factory()->create();
+        $this->actingAs($user)->get('/login')->assertRedirect(route('dashboard'));
+    }
 }

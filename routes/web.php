@@ -16,6 +16,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PublicController;
 use App\Http\Controllers\JournalController;
 use App\Http\Controllers\JournalManagementController;
+use App\Http\Controllers\ResearchFieldController;
 
 /*
 |--------------------------------------------------------------------------
@@ -58,7 +59,7 @@ Route::redirect('/reader', '/articles');
 Route::redirect('/reader/artikel/{id}', '/articles/{id}');
 
 // 2. Auth routes
-Route::middleware('guest')->group(function () {
+Route::middleware(['guest', 'no-back'])->group(function () {
     Route::get('/login', [AuthController::class, 'showLogin'])
         ->name('login');
 
@@ -345,6 +346,11 @@ Route::middleware(['auth', 'role:admin'])
         Route::put('/jurnal/{journal}', [JournalManagementController::class, 'update'])->name('journals.update');
         Route::post('/jurnal/{journal}/anggota', [JournalManagementController::class, 'addMember'])->name('journals.members.add');
         Route::delete('/jurnal/{journal}/anggota/{user}/{role}', [JournalManagementController::class, 'removeMember'])->name('journals.members.remove');
+
+        // Bidang Keahlian (master data reviewer/naskah)
+        Route::get('/bidang-keahlian', [ResearchFieldController::class, 'index'])->name('fields.index');
+        Route::post('/bidang-keahlian', [ResearchFieldController::class, 'store'])->name('fields.store');
+        Route::put('/bidang-keahlian/{field}', [ResearchFieldController::class, 'update'])->name('fields.update');
 
         // Role & Hak Akses
         Route::get('/role', [

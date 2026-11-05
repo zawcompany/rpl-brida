@@ -322,7 +322,7 @@ class EditorModuleTest extends TestCase
 
     public function test_keputusan_akhir_memetakan_status_dengan_benar(): void
     {
-        $cases = ['diterima' => 'disetujui', 'revisi_minor' => 'revisi', 'revisi_mayor' => 'revisi', 'ditolak' => 'ditolak'];
+        $cases = ['diterima' => 'disetujui', 'revisi_minor' => 'disetujui', 'revisi_mayor' => 'revisi', 'ditolak' => 'ditolak'];
 
         foreach ($cases as $decision => $status) {
             $m = $this->makeManuscript('menunggu_keputusan');
@@ -336,6 +336,17 @@ class EditorModuleTest extends TestCase
             $this->assertSame('Catatan editor', $m->editorial_note);
             $this->assertNotNull($m->decided_at);
         }
+    }
+
+    public function test_revisi_minor_diselesaikan_editor_dan_mayor_dikembalikan_ke_author(): void
+    {
+        $minor = $this->makeManuscript('menunggu_keputusan');
+        $this->actingAs($this->editor)->postJson("/editor/keputusan/{$minor->id}", ['decision' => 'revisi_minor', 'editorial_note' => 'Rapikan sitasi'])->assertOk();
+        $this->assertSame('disetujui', $minor->fresh()->status); // tidak masuk antrean revisi author
+
+        $major = $this->makeManuscript('menunggu_keputusan');
+        $this->actingAs($this->editor)->postJson("/editor/keputusan/{$major->id}", ['decision' => 'revisi_mayor', 'editorial_note' => 'Ubah metode'])->assertOk();
+        $this->assertSame('revisi', $major->fresh()->status);   // author mengunggah revisi
     }
 
     public function test_revisi_dan_penolakan_wajib_catatan_tapi_penerimaan_tidak(): void

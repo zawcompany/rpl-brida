@@ -103,10 +103,20 @@
 
             <div>
                 <label class="block text-xs font-semibold text-gray-600 mb-1.5" for="rv-comments">
-                    Komentar & Perbaikan untuk Author/Editor <span class="text-red-500">*</span>
+                    Komentar & Perbaikan untuk Author <span class="text-red-500">*</span>
+                    <span class="font-normal text-gray-400">(dapat dibaca penulis secara anonim)</span>
                 </label>
                 <textarea id="rv-comments" x-model="form.comments" rows="5" maxlength="5000"
                           placeholder="Tulis komentar, kritik, dan saran perbaikan yang konstruktif..."
+                          class="w-full text-sm border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-y"></textarea>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1.5" for="rv-notes">
+                    Catatan Rahasia untuk Editor <span class="font-normal text-gray-400">(opsional, tidak terlihat oleh penulis)</span>
+                </label>
+                <textarea id="rv-notes" x-model="form.notes_for_editor" rows="3" maxlength="3000"
+                          placeholder="Mis. dugaan plagiarisme, konflik kepentingan, atau pertimbangan lain khusus editor..."
                           class="w-full text-sm border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-y"></textarea>
             </div>
 
@@ -165,7 +175,7 @@
 @push('scripts')
 <script>
 function reviewModal(reload) {
-    const blank = () => ({ scores: {}, comments: '', recommendation: '' });
+    const blank = () => ({ scores: {}, comments: '', notes_for_editor: '', recommendation: '' });
 
     return editorModal({
         detailUrl: @js(route('reviewer.reviews.detail', '__ID__')),
@@ -186,7 +196,7 @@ function reviewModal(reload) {
             this.r = d.review;
             const res = d.review.result;
             this.form = res
-                ? { scores: { ...res.scores }, comments: res.comments ?? '', recommendation: res.recommendation ?? '' }
+                ? { scores: { ...res.scores }, comments: res.comments ?? '', notes_for_editor: res.notes_for_editor ?? '', recommendation: res.recommendation ?? '' }
                 : blank();
         },
 
@@ -246,6 +256,7 @@ function reviewModal(reload) {
             const body = new FormData();
             this.r.rubric.forEach(c => body.append(c.key, this.form.scores[c.key]));
             body.append('comments', this.form.comments);
+            body.append('notes_for_editor', this.form.notes_for_editor ?? '');
             body.append('recommendation', this.form.recommendation);
             if (this.file) body.append('review_file', this.file);
 

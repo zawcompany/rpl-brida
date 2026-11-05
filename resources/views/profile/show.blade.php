@@ -5,6 +5,7 @@
     $input = 'w-full text-sm border rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-red-500 focus:border-red-500 bg-white';
     $selectedFields = collect(old('research_field_ids', $user->researchFields->pluck('id')->all()))->map(fn ($id) => (int) $id)->all();
     $passwordErrors = $errors->getBag('password');
+    $maxExpertise = \App\Http\Requests\Profile\UpdateProfileRequest::MAX_EXPERTISE;
 @endphp
 
 <div class="mb-6">
@@ -96,16 +97,9 @@
     {{-- Hanya Reviewer: bidang keahlian (dasar rekomendasi penugasan oleh editor) --}}
     @if ($expertise)
     <div>
-        <p class="text-sm font-semibold text-gray-700 mb-1.5">Bidang Keahlian <span class="font-normal text-gray-400">(maks. 10)</span></p>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-56 overflow-y-auto border border-gray-200 rounded-lg p-3">
-            @foreach ($expertise as $field)
-                <label class="flex items-center gap-2 text-sm text-gray-700">
-                    <input type="checkbox" name="research_field_ids[]" value="{{ $field->id }}" @checked(in_array($field->id, $selectedFields, true))
-                           class="rounded border-gray-300 text-red-600 focus:ring-red-500">
-                    {{ $field->name }}
-                </label>
-            @endforeach
-        </div>
+        <p class="text-sm font-semibold text-gray-700 mb-1.5">Bidang Keahlian <span class="font-normal text-gray-400">(maks. {{ $maxExpertise }})</span></p>
+        <x-multi-select name="research_field_ids" :options="$expertise->pluck('name', 'id')" :selected="$selectedFields"
+                        :max="$maxExpertise" placeholder="Cari bidang keahlian..." />
         @error('research_field_ids') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
         @error('research_field_ids.*') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
     </div>
@@ -128,20 +122,20 @@
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div>
             <label for="current_password" class="block text-sm font-semibold text-gray-700 mb-1.5">Password Saat Ini</label>
-            <input id="current_password" name="current_password" type="password" autocomplete="current-password" required
-                   class="{{ $input }} {{ $passwordErrors->has('current_password') ? 'border-red-400' : 'border-gray-300' }}">
+            <x-password-input id="current_password" name="current_password" autocomplete="current-password" required
+                   class="{{ $input }} {{ $passwordErrors->has('current_password') ? 'border-red-400' : 'border-gray-300' }}" />
             @if ($passwordErrors->has('current_password')) <p class="text-xs text-red-600 mt-1">{{ $passwordErrors->first('current_password') }}</p> @endif
         </div>
         <div>
             <label for="password" class="block text-sm font-semibold text-gray-700 mb-1.5">Password Baru</label>
-            <input id="password" name="password" type="password" minlength="8" autocomplete="new-password" required
-                   class="{{ $input }} {{ $passwordErrors->has('password') ? 'border-red-400' : 'border-gray-300' }}">
+            <x-password-input id="password" name="password" minlength="8" autocomplete="new-password" required
+                   class="{{ $input }} {{ $passwordErrors->has('password') ? 'border-red-400' : 'border-gray-300' }}" />
             @if ($passwordErrors->has('password')) <p class="text-xs text-red-600 mt-1">{{ $passwordErrors->first('password') }}</p> @endif
         </div>
         <div>
             <label for="password_confirmation" class="block text-sm font-semibold text-gray-700 mb-1.5">Konfirmasi Password Baru</label>
-            <input id="password_confirmation" name="password_confirmation" type="password" minlength="8" autocomplete="new-password" required
-                   class="{{ $input }} border-gray-300">
+            <x-password-input id="password_confirmation" name="password_confirmation" minlength="8" autocomplete="new-password" required
+                   class="{{ $input }} border-gray-300" />
         </div>
     </div>
 

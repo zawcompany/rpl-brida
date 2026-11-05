@@ -12,7 +12,7 @@
             </p>
         </div>
         <div class="md:w-1/3 mt-6 md:mt-0 flex justify-end">
-            <img src="{{ asset('images/administrator.png') }}" alt="Ilustrasi Administrator"
+            <img src="{{ asset('images/admin.png') }}" alt="Ilustrasi Administrator"
                  class="w-48 h-auto object-contain drop-shadow-md"
                  onerror="this.onerror=null; this.src='https://placehold.co/400x300/f3f4f6/4b5563?text=Administrator+Illustration';">
         </div>

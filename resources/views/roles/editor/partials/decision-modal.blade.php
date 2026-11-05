@@ -29,6 +29,10 @@
                                   :class="r.recommendation_class" x-text="r.recommendation_label ?? 'Tanpa rekomendasi'"></span>
                         </div>
                         <p class="text-sm text-gray-700 mt-2 whitespace-pre-line" x-text="r.comments || 'Tanpa catatan.'"></p>
+                        <p x-show="r.notes_for_editor" class="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 whitespace-pre-line">
+                            <span class="block text-xs font-semibold uppercase tracking-wider text-amber-700">Catatan rahasia untuk editor</span>
+                            <span x-text="r.notes_for_editor"></span>
+                        </p>
                         <div class="flex flex-wrap gap-1.5 mt-2" x-show="(r.scores ?? []).some(s => s.value)">
                             <template x-for="s in r.scores ?? []" :key="s.label">
                                 <span class="text-xs bg-gray-100 text-gray-600 rounded px-2 py-0.5" x-text="`${s.label}: ${s.value || '—'}`"></span>
@@ -109,8 +113,8 @@
                         class="w-full text-sm border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-red-500 focus:border-red-500 bg-white">
                     <option value="">— Pilih Keputusan —</option>
                     <option value="diterima">Diterima (status: Disetujui)</option>
-                    <option value="revisi_minor">Revisi Minor (dikembalikan ke author)</option>
-                    <option value="revisi_mayor">Revisi Mayor (dikembalikan ke author)</option>
+                    <option value="revisi_minor">Revisi Minor (diselesaikan editor, author tidak perlu unggah ulang)</option>
+                    <option value="revisi_mayor">Revisi Mayor (dikembalikan ke author untuk unggah revisi)</option>
                     <option value="ditolak">Ditolak (status: Ditolak)</option>
                 </select>
             </div>

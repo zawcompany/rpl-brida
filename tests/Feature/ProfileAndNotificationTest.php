@@ -55,7 +55,7 @@ class ProfileAndNotificationTest extends TestCase
             'Author'        => 'Total Naskah',
             'Editor'        => 'Naskah Baru',
             'Reviewer'      => 'Review Aktif',
-            'Administrator' => 'Total Pengguna',
+            'Administrator' => 'Total Jurnal',
         ];
 
         foreach ($expect as $role => $text) {
@@ -118,6 +118,20 @@ class ProfileAndNotificationTest extends TestCase
             'name' => 'A', 'email' => $author->email, 'research_field_ids' => [$f1->id],
         ]);
         $this->assertCount(0, $author->fresh()->researchFields);
+    }
+
+    public function test_reviewer_expertise_is_limited_to_three_and_uses_multiselect(): void
+    {
+        $ids = collect(range(1, 4))->map(fn ($i) => ResearchField::create(['name' => "F$i", 'slug' => "f$i"])->id)->all();
+        $reviewer = $this->user('Reviewer');
+
+        $this->actingAs($reviewer)->get(route('profile.show'))->assertOk()->assertSee('name="research_field_ids[]"', false);
+
+        $this->put(route('profile.update'), ['name' => 'R', 'email' => $reviewer->email, 'research_field_ids' => $ids])
+            ->assertSessionHasErrors('research_field_ids');
+        $this->put(route('profile.update'), ['name' => 'R', 'email' => $reviewer->email, 'research_field_ids' => array_slice($ids, 0, 3)])
+            ->assertSessionHasNoErrors();
+        $this->assertCount(3, $reviewer->fresh()->researchFields);
     }
 
     public function test_change_password_requires_current_password(): void
