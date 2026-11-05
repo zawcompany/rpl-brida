@@ -1,0 +1,64 @@
+{
+  "family": "simpil-web",
+  "requiresCompatibilities": ["FARGATE"],
+  "networkMode": "awsvpc",
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::<ACCOUNT_ID>:role/simpil-ecs-execution-role",
+  "taskRoleArn": "arn:aws:iam::<ACCOUNT_ID>:role/simpil-ecs-task-role",
+  "runtimePlatform": { "cpuArchitecture": "X86_64", "operatingSystemFamily": "LINUX" },
+  "containerDefinitions": [
+    {
+      "name": "web",
+      "image": "<ACCOUNT_ID>.dkr.ecr.ap-southeast-3.amazonaws.com/simpil-web:<TAG>",
+      "essential": true,
+      "portMappings": [{ "containerPort": 80, "protocol": "tcp" }],
+      "dependsOn": [{ "containerName": "app", "condition": "START" }],
+      "environment": [{ "name": "PHP_FPM_HOST", "value": "127.0.0.1" }],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": { "awslogs-group": "/ecs/simpil", "awslogs-region": "ap-southeast-3", "awslogs-stream-prefix": "web" }
+      }
+    },
+    {
+      "name": "app",
+      "image": "<ACCOUNT_ID>.dkr.ecr.ap-southeast-3.amazonaws.com/simpil-app:<TAG>",
+      "essential": true,
+      "environment": [
+        { "name": "APP_ENV", "value": "production" },
+        { "name": "APP_DEBUG", "value": "false" },
+        { "name": "APP_URL", "value": "https://simpil.example.go.id" },
+        { "name": "LOG_CHANNEL", "value": "stderr" },
+        { "name": "FORCE_HTTPS", "value": "true" },
+        { "name": "TRUSTED_PROXIES", "value": "*" },
+        { "name": "SESSION_SECURE_COOKIE", "value": "true" },
+        { "name": "DB_CONNECTION", "value": "mysql" },
+        { "name": "DB_HOST", "value": "<simpil-db.xxxx.ap-southeast-3.rds.amazonaws.com>" },
+        { "name": "DB_DATABASE", "value": "simpil" },
+        { "name": "DB_USERNAME", "value": "simpil_app" },
+        { "name": "MYSQL_ATTR_SSL_CA", "value": "/etc/ssl/certs/rds-global-bundle.pem" },
+        { "name": "CACHE_STORE", "value": "redis" },
+        { "name": "SESSION_DRIVER", "value": "redis" },
+        { "name": "QUEUE_CONNECTION", "value": "redis" },
+        { "name": "REDIS_HOST", "value": "<simpil-redis.xxxx.cache.amazonaws.com>" },
+        { "name": "REDIS_SCHEME", "value": "tls" },
+        { "name": "AWS_DEFAULT_REGION", "value": "ap-southeast-3" },
+        { "name": "MANUSCRIPT_DISK", "value": "s3" },
+        { "name": "AWS_BUCKET", "value": "simpil-docs-prod" },
+        { "name": "COVER_DISK", "value": "s3_public" },
+        { "name": "AWS_PUBLIC_BUCKET", "value": "simpil-covers-prod" },
+        { "name": "AWS_PUBLIC_URL", "value": "https://<dxxxx>.cloudfront.net" },
+        { "name": "MAIL_MAILER", "value": "ses" }
+      ],
+      "secrets": [
+        { "name": "APP_KEY", "valueFrom": "arn:aws:secretsmanager:ap-southeast-3:<ACCOUNT_ID>:secret:simpil/app-key" },
+        { "name": "DB_PASSWORD", "valueFrom": "arn:aws:secretsmanager:ap-southeast-3:<ACCOUNT_ID>:secret:simpil/db-password" },
+        { "name": "REDIS_PASSWORD", "valueFrom": "arn:aws:secretsmanager:ap-southeast-3:<ACCOUNT_ID>:secret:simpil/redis-auth" }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": { "awslogs-group": "/ecs/simpil", "awslogs-region": "ap-southeast-3", "awslogs-stream-prefix": "app" }
+      }
+    }
+  ]
+}

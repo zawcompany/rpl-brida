@@ -1,10 +1,20 @@
-# SIMPIL — satu server (mis. 1 EC2) dengan Docker Compose. Untuk tugas/demo, BUKAN arsitektur produksi berskala.
-#   cp .env.ec2.example .env   (isi nilai)  ->  docker compose -f docker-compose.ec2.yml up -d --build
-# Semua di satu mesin: Nginx + PHP-FPM + worker antrean + MySQL. Berkas disimpan di volume Docker lokal.
-# Akses: http://<IP-publik-EC2>/
+# SIMPIL — satu server EC2 dengan Docker Compose, image dari Amazon ECR, log ke CloudWatch.
+# Untuk tugas/demo, BUKAN arsitektur produksi berskala (lihat deploy/aws/ECS-DEPLOY.md untuk itu).
+#
+# Variabel (dari .env di server, dibuat dari SSM Parameter Store oleh skrip boot):
+#   ECR_REGISTRY=<ACCOUNT_ID>.dkr.ecr.ap-southeast-3.amazonaws.com    IMAGE_TAG=<tag>
+# Layanan AWS yang dipakai: EC2, ECR (image), S3 (naskah), SQS (antrean), SES (surel),
+#   CloudWatch Logs (log container), IAM Role (tanpa access key), SSM (rahasia & akses).
+
+x-logging: &logging
+  driver: awslogs
+  options:
+    awslogs-region: ap-southeast-3
+    awslogs-group: /simpil/ec2
+    awslogs-create-group: "false"
 
 x-app: &app
-  image: simpil-app:local
+  image: ${ECR_REGISTRY:?isi ECR_REGISTRY di .env}/simpil-app:${IMAGE_TAG:-latest}
   env_file: .env
   working_dir: /var/www/html
   restart: unless-stopped
@@ -19,9 +29,9 @@ x-app: &app
     - publicdisk:/var/www/html/storage/app/public   # sampul edisi; juga dibaca Nginx lewat /storage
 
 services:
-  # Satu kali jalan: pastikan volume bisa ditulis www-data (volume baru dimiliki root).
+  # Satu kali jalan: volume baru dimiliki root, pastikan www-data bisa menulis.
   perms:
-    image: simpil-app:local
+    image: ${ECR_REGISTRY}/simpil-app:${IMAGE_TAG:-latest}
     user: root
     entrypoint: ["sh", "-c"]
     command: ["mkdir -p storage/app/private storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs && chown -R www-data:www-data storage"]
@@ -29,21 +39,12 @@ services:
     volumes:
       - storage:/var/www/html/storage
       - publicdisk:/var/www/html/storage/app/public
-    depends_on:
-      app-build:
-        condition: service_completed_successfully
-
-  # Hanya untuk membangun image sekali; langsung selesai.
-  app-build:
-    build:
-      context: .
-      target: app
-    image: simpil-app:local
-    entrypoint: ["true"]
-    command: []
 
   app:
     <<: *app
+    logging:
+      <<: *logging
+      options: {awslogs-region: ap-southeast-3, awslogs-group: /simpil/ec2, awslogs-stream: app}
     environment:
       <<: *app-env
       RUN_MIGRATIONS: "true"
@@ -55,16 +56,20 @@ services:
 
   queue:
     <<: *app
+    logging:
+      <<: *logging
+      options: {awslogs-region: ap-southeast-3, awslogs-group: /simpil/ec2, awslogs-stream: queue}
     command: php artisan queue:work --sleep=3 --tries=3 --backoff=10 --max-time=3600
     depends_on:
       app:
         condition: service_started
 
   web:
-    build:
-      context: .
-      target: web
+    image: ${ECR_REGISTRY}/simpil-web:${IMAGE_TAG:-latest}
     restart: unless-stopped
+    logging:
+      <<: *logging
+      options: {awslogs-region: ap-southeast-3, awslogs-group: /simpil/ec2, awslogs-stream: web}
     environment:
       PHP_FPM_HOST: app
     ports:
@@ -82,7 +87,7 @@ services:
       MYSQL_USER: ${DB_USERNAME:?isi DB_USERNAME di .env}
       MYSQL_PASSWORD: ${DB_PASSWORD:?isi DB_PASSWORD di .env}
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?isi DB_ROOT_PASSWORD di .env}
-    # Tidak ada "ports": MySQL hanya bisa dijangkau container lain, tidak dari internet.
+    # Tanpa "ports": MySQL hanya terjangkau container lain, tidak dari internet.
     volumes:
       - dbdata:/var/lib/mysql
     healthcheck:
