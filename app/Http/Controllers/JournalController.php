@@ -8,6 +8,7 @@ use App\Models\Issue;
 use App\Models\Journal;
 use App\Services\Files\JournalTemplateStore;
 use App\Services\JournalService;
+use App\Support\Nav;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -57,7 +58,7 @@ class JournalController extends Controller
             return back()->with('error', $e->getMessage());
         }
 
-        return redirect()->route('journals.show', $journal)
+        return redirect()->route('journals.show', ['journal' => $journal] + Nav::keep())
             ->with('success', "Anda bergabung di {$journal->name}. Template naskah kini dapat diunduh.");
     }
 
@@ -69,7 +70,7 @@ class JournalController extends Controller
             return back()->with('error', $e->getMessage());
         }
 
-        return redirect()->route('journals.show', $journal)->with('success', "Anda keluar dari {$journal->name}.");
+        return redirect()->route('journals.show', ['journal' => $journal] + Nav::keep())->with('success', "Anda keluar dari {$journal->name}.");
     }
 
     /** Unduh template: hanya anggota jurnal (peran apa pun) atau Administrator. */
@@ -78,7 +79,7 @@ class JournalController extends Controller
         $user = $request->user();
 
         if (! $user->isAdmin() && ! $user->isMemberOf($journal)) {
-            return redirect()->route('journals.show', $journal)
+            return redirect()->route('journals.show', ['journal' => $journal] + Nav::keep())
                 ->with('error', 'Template hanya dapat diunduh anggota jurnal. Bergabung dulu ke kelompok jurnal ini.');
         }
 

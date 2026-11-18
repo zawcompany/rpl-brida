@@ -1,0 +1,19 @@
+{
+  "Rules": [
+    {
+      "ID": "backups-retensi-14-hari",
+      "Filter": { "Prefix": "backups/" },
+      "Status": "Enabled",
+      "Expiration": { "Days": 14 },
+      "NoncurrentVersionExpiration": { "NoncurrentDays": 1 },
+      "AbortIncompleteMultipartUpload": { "DaysAfterInitiation": 1 }
+    },
+    {
+      "ID": "naskah-versi-lama-30-hari",
+      "Filter": { "Prefix": "" },
+      "Status": "Enabled",
+      "NoncurrentVersionExpiration": { "NoncurrentDays": 30, "NewerNoncurrentVersions": 3 },
+      "Expiration": { "ExpiredObjectDeleteMarker": true }
+    }
+  ]
+}

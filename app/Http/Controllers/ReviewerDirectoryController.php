@@ -23,7 +23,7 @@ class ReviewerDirectoryController extends Controller
             $request,
             'roles.editor.reviewers',
             'roles.editor.partials.reviewer-table-rows',
-            $this->editorService->getReviewerDirectory($request->only(['search', 'field', 'per_page'])),
+            $this->editorService->getReviewerDirectory($this->filters($request, ['search', 'field', 'per_page'])),
             ['fields' => $this->editorService->getResearchFields()]
         );
     }

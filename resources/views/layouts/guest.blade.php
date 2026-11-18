@@ -55,7 +55,7 @@
                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                         </div>
-                        <input type="search" name="q" value="{{ request('q') }}" maxlength="100" placeholder="Cari artikel..."
+                        <input type="search" name="q" value="{{ is_string(request('q')) ? request('q') : '' }}" maxlength="100" placeholder="Cari artikel..."
                                class="w-44 xl:w-60 pl-9 pr-3 py-2 bg-gray-100 border border-transparent rounded-full text-sm placeholder-gray-400 focus:outline-none focus:bg-white focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-all">
                     </form>
 
@@ -92,18 +92,6 @@
             @endguest
         </div>
     </header>
-
-    {{-- Dari dashboard: tombol kembali tanpa perlu membuka menu Dashboard --}}
-    @if (\App\Support\Nav::fromDashboard())
-        <div class="border-b border-gray-100 bg-white">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5">
-                <a href="{{ route('dashboard') }}" class="inline-flex items-center gap-1.5 text-sm font-semibold text-red-600 transition hover:text-red-700">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-                    Kembali ke Dashboard
-                </a>
-            </div>
-        </div>
-    @endif
 
     {{-- ISI HALAMAN --}}
     <main class="flex-1">

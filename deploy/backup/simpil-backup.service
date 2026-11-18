@@ -1,0 +1,8 @@
+[Unit]
+Description=SIMPIL backup DB + storage ke S3
+After=simpil.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/simpil-backup.sh

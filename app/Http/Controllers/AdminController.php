@@ -44,8 +44,8 @@ class AdminController extends Controller
             $request,
             'roles.admin.users',
             'roles.admin.partials.user-table-rows',
-            $this->adminService->getUsers($request->only(self::FILTER_KEYS)),
-            ['roleOptions' => User::ROLE_LABELS, 'initialRole' => (string) $request->query('role', '')]
+            $this->adminService->getUsers($this->filters($request, self::FILTER_KEYS)),
+            ['roleOptions' => User::ROLE_LABELS, 'initialRole' => (string) ($this->filters($request, ['role'])['role'] ?? '')]
         );
     }
 
@@ -97,7 +97,7 @@ class AdminController extends Controller
             $request,
             'roles.admin.roles',
             'roles.admin.partials.role-table-rows',
-            $this->adminService->getUsers($request->only(self::FILTER_KEYS)),
+            $this->adminService->getUsers($this->filters($request, self::FILTER_KEYS)),
             [
                 'roleOptions' => User::ROLE_LABELS,
                 'initialRole' => '',

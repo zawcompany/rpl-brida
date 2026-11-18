@@ -20,6 +20,9 @@ abstract class TestCase extends BaseTestCase
     {
         parent::setUp();
 
+        // Tes tidak bergantung pada hasil `npm run build` (public/build/manifest.json).
+        $this->withoutVite();
+
         if ($this->autoJoinDefaultJournal) {
             User::created(function (User $user): void {
                 $journal = Journal::default();

@@ -1,4 +1,4 @@
-@extends('layouts.guest', ['title' => $journal->name . ' — SIMPIL BRIDA'])
+@extends(\App\Support\Nav::layout(), ['title' => $journal->name . ' — SIMPIL BRIDA'])
 
 @section('content')
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
@@ -62,7 +62,7 @@
                     @else
                         @if ($isMember || auth()->user()->isAdmin())
                             @if ($journal->hasTemplate())
-                                <a href="{{ route('journals.template', $journal) }}"
+                                <a href="{{ route('journals.template', ['journal' => $journal] + \App\Support\Nav::keep()) }}"
                                    class="inline-flex items-center justify-center gap-2 rounded-lg bg-red-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
                                     Unduh Template
@@ -74,6 +74,7 @@
                             </div>
                             <form method="POST" action="{{ route('journals.join', $journal) }}">
                                 @csrf
+                                @if (\App\Support\Nav::fromDashboard())<input type="hidden" name="dari" value="dashboard">@endif
                                 <button type="submit" class="rounded-lg bg-red-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700">
                                     Gabung sebagai Penulis
                                 </button>
@@ -89,6 +90,7 @@
                                 <a href="{{ route('author.manuscripts.create') }}" class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">Kirim Naskah</a>
                                 <form method="POST" action="{{ route('journals.leave', $journal) }}" onsubmit="return confirm('Keluar dari kelompok jurnal ini?')">
                                     @csrf @method('DELETE')
+                                    @if (\App\Support\Nav::fromDashboard())<input type="hidden" name="dari" value="dashboard">@endif
                                     <button type="submit" class="rounded-lg px-4 py-2 text-sm font-semibold text-gray-500 hover:text-red-600">Keluar dari kelompok</button>
                                 </form>
                             </div>

@@ -41,8 +41,8 @@ class DocumentInspector
         }
 
         $valid = match ($extension) {
-            'pdf'   => $this->looksLikePdf($file->getRealPath()),
-            'docx'  => $this->looksLikeDocx($file->getRealPath()),
+            'pdf'   => $this->looksLikePdf((string) $file->getRealPath()),
+            'docx'  => $this->looksLikeDocx((string) $file->getRealPath()),
             default => false,
         };
 
@@ -60,7 +60,8 @@ class DocumentInspector
 
     private function looksLikePdf(string $path): bool
     {
-        $handle = fopen($path, 'rb');
+        // Berkas sementara yang tidak terbaca = tolak (bukan galat 500).
+        $handle = $path !== '' && is_readable($path) ? @fopen($path, 'rb') : false;
         $head = $handle ? fread($handle, 1024) : '';
         $handle && fclose($handle);
 
@@ -71,7 +72,7 @@ class DocumentInspector
     private function looksLikeDocx(string $path): bool
     {
         $zip = new ZipArchive();
-        if ($zip->open($path) !== true) {
+        if ($path === '' || ! is_readable($path) || $zip->open($path) !== true) {
             return false;
         }
 

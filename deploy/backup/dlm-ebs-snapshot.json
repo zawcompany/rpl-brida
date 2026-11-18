@@ -1,0 +1,13 @@
+{
+  "PolicyType": "EBS_SNAPSHOT_MANAGEMENT",
+  "ResourceTypes": ["INSTANCE"],
+  "TargetTags": [{ "Key": "Name", "Value": "simpil-demo" }],
+  "Schedules": [
+    {
+      "Name": "mingguan-simpan-2",
+      "CopyTags": true,
+      "CreateRule": { "CronExpression": "cron(0 19 ? * SAT *)" },
+      "RetainRule": { "Count": 2 }
+    }
+  ]
+}

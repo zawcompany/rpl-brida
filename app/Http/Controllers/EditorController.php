@@ -50,7 +50,7 @@ class EditorController extends Controller
             $request,
             'roles.editor.new-manuscripts',
             'roles.editor.partials.manuscript-table-rows',
-            $this->editorService->getNewManuscripts($request->only(self::FILTER_KEYS))
+            $this->editorService->getNewManuscripts($this->filters($request, self::FILTER_KEYS))
         );
     }
 
@@ -96,7 +96,7 @@ class EditorController extends Controller
             $request,
             'roles.editor.under-review',
             'roles.editor.partials.review-table-rows',
-            $this->editorService->getUnderReview($request->only(self::FILTER_KEYS))
+            $this->editorService->getUnderReview($this->filters($request, self::FILTER_KEYS))
         );
     }
 
@@ -155,7 +155,7 @@ class EditorController extends Controller
             $request,
             'roles.editor.decisions',
             'roles.editor.partials.decision-table-rows',
-            $this->editorService->getAwaitingDecision($request->only(self::FILTER_KEYS))
+            $this->editorService->getAwaitingDecision($this->filters($request, self::FILTER_KEYS))
         );
     }
 

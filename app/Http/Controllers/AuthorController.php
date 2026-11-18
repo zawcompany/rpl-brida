@@ -67,8 +67,8 @@ class AuthorController extends Controller
             $request,
             'roles.author.manuscripts',
             'roles.author.partials.manuscript-table-rows',
-            $this->authorService->getMyManuscripts($request->user(), $request->only(self::FILTER_KEYS)),
-            ['statuses' => Manuscript::STATUSES, 'initialStatus' => (string) $request->query('status', '')]
+            $this->authorService->getMyManuscripts($request->user(), $this->filters($request, self::FILTER_KEYS)),
+            ['statuses' => Manuscript::STATUSES, 'initialStatus' => (string) ($this->filters($request, ['status'])['status'] ?? '')]
         );
     }
 
@@ -91,7 +91,7 @@ class AuthorController extends Controller
             $request,
             'roles.author.revisions',
             'roles.author.partials.revision-table-rows',
-            $this->authorService->getRevisionQueue($request->user(), $request->only(self::FILTER_KEYS))
+            $this->authorService->getRevisionQueue($request->user(), $this->filters($request, self::FILTER_KEYS))
         );
     }
 

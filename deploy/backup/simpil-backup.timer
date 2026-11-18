@@ -1,0 +1,11 @@
+[Unit]
+Description=SIMPIL backup harian 02:00 WIB
+
+[Timer]
+OnCalendar=*-*-* 19:00:00 UTC
+# Instance mati saat jadwal? Jalankan begitu menyala lagi.
+Persistent=true
+RandomizedDelaySec=10min
+
+[Install]
+WantedBy=timers.target

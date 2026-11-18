@@ -1,4 +1,4 @@
-@extends('layouts.guest', ['title' => $issue->label . ' — SIMPIL BRIDA'])
+@extends(\App\Support\Nav::layout(), ['title' => $issue->label . ' — SIMPIL BRIDA'])
 
 @section('content')
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">

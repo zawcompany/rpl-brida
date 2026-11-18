@@ -160,27 +160,52 @@ class PublicJournalPagesTest extends TestCase
             ->assertSee($issue->label)->assertSee('Kesehatan Kota')->assertSee('Gizi Anak Perkotaan');
     }
 
-    // ---------------------------------------------------------------- kembali ke dashboard
+    // ---------------------------------------------------------------- dibuka dari dashboard
 
-    public function test_back_to_dashboard_button_appears_only_when_coming_from_dashboard(): void
+    /** Penanda layout dashboard (sidebar) dan layout publik (header menu). */
+    private const DASHBOARD_LAYOUT = 'sidebarOpen';
+    private const PUBLIC_LAYOUT = 'Panduan Penulis';
+
+    private function pages(Issue $issue): array
+    {
+        return [route('journals.index'), route('journals.show', $this->a), route('archives.index'), route('archives.show', $issue)];
+    }
+
+    public function test_pages_opened_from_dashboard_keep_dashboard_layout_for_every_role(): void
     {
         $issue = $this->issue($this->a, 2026, 1, 1);
-        $author = $this->user('Author');
 
-        $pages = [route('journals.index'), route('journals.show', $this->a), route('archives.index'), route('archives.show', $issue)];
+        foreach (['Author', 'Editor', 'Reviewer', 'Administrator'] as $role) {
+            $user = $this->user($role);
 
-        foreach ($pages as $url) {
-            // dari dashboard: ada tombol, tertuju ke dashboard
-            $this->actingAs($author)->get($url . '?dari=dashboard')->assertOk()
-                ->assertSee('Kembali ke Dashboard')->assertSee(route('dashboard'), false);
+            foreach ($this->pages($issue) as $url) {
+                // dari dashboard: tetap di layout dashboard (sidebar), bukan header publik
+                $this->actingAs($user)->get($url . '?dari=dashboard')->assertOk()
+                    ->assertSee(self::DASHBOARD_LAYOUT, false)->assertDontSee(self::PUBLIC_LAYOUT);
 
-            // lewat menu publik (tanpa penanda): tidak ada tombol
-            $this->actingAs($author)->get($url)->assertOk()->assertDontSee('Kembali ke Dashboard');
+                // lewat menu publik (tanpa penanda): layout publik
+                $this->actingAs($user)->get($url)->assertOk()
+                    ->assertSee(self::PUBLIC_LAYOUT)->assertDontSee(self::DASHBOARD_LAYOUT, false);
+            }
+        }
+    }
+
+    public function test_guest_or_forged_marker_never_gets_dashboard_layout(): void
+    {
+        $issue = $this->issue($this->a, 2026, 1, 1);
+
+        // tamu tidak punya dashboard: penanda diabaikan, tidak error
+        foreach ($this->pages($issue) as $url) {
+            $this->get($url . '?dari=dashboard')->assertOk()
+                ->assertSee(self::PUBLIC_LAYOUT)->assertDontSee(self::DASHBOARD_LAYOUT, false);
         }
 
-        // tamu tidak punya dashboard
-        auth()->logout();
-        $this->get(route('journals.index') . '?dari=dashboard')->assertOk()->assertDontSee('Kembali ke Dashboard');
+        // nilai penanda lain / bentuk array tidak dianggap dari dashboard
+        $author = $this->user('Author');
+        foreach (['?dari=Dashboard', '?dari=x', '?dari[]=dashboard', '?dari='] as $q) {
+            $this->actingAs($author)->get(route('journals.index') . $q)->assertOk()
+                ->assertDontSee(self::DASHBOARD_LAYOUT, false);
+        }
     }
 
     public function test_dashboard_marker_is_kept_while_browsing_journal_to_issue(): void
@@ -191,7 +216,51 @@ class PublicJournalPagesTest extends TestCase
 
         $this->get(route('journals.index') . '?dari=dashboard')->assertSee('jurnal/' . $this->a->slug . '?dari=dashboard', false);
         $this->get(route('journals.show', $this->a) . '?dari=dashboard')->assertSee('archives/' . $issue->id . '?dari=dashboard', false);
-        $this->get(route('archives.show', $issue) . '?dari=dashboard')->assertSee('Kembali ke Dashboard');
+        $this->get(route('archives.show', $issue) . '?dari=dashboard')
+            ->assertSee('jurnal/' . $this->a->slug . '?dari=dashboard', false)
+            ->assertSee(self::DASHBOARD_LAYOUT, false);
+    }
+
+    public function test_join_and_leave_from_dashboard_stay_in_dashboard_layout(): void
+    {
+        $author = $this->user('Author');
+        $this->actingAs($author);
+
+        // form gabung membawa penanda agar redirect kembali ke tampilan dashboard
+        $this->get(route('journals.show', $this->b) . '?dari=dashboard')
+            ->assertSee('name="dari" value="dashboard"', false);
+
+        $this->post(route('journals.join', $this->b), ['dari' => 'dashboard'])
+            ->assertRedirect(route('journals.show', ['journal' => $this->b, 'dari' => 'dashboard']));
+        $this->assertTrue($author->fresh()->isMemberOf($this->b));
+
+        $this->delete(route('journals.leave', $this->b), ['dari' => 'dashboard'])
+            ->assertRedirect(route('journals.show', ['journal' => $this->b, 'dari' => 'dashboard']));
+
+        // dari halaman publik: redirect tetap ke halaman publik
+        $this->post(route('journals.join', $this->b))->assertRedirect(route('journals.show', $this->b));
+    }
+
+    public function test_template_denied_for_non_member_redirects_with_context(): void
+    {
+        $author = $this->user('Author');
+
+        $this->actingAs($author)->get(route('journals.template', ['journal' => $this->b, 'dari' => 'dashboard']))
+            ->assertRedirect(route('journals.show', ['journal' => $this->b, 'dari' => 'dashboard']))
+            ->assertSessionHas('error');
+
+        // tamu: harus login dulu
+        auth()->logout();
+        $this->get(route('journals.template', $this->b))->assertRedirect(route('login'));
+    }
+
+    public function test_inactive_journal_stays_hidden_even_from_dashboard(): void
+    {
+        $this->b->update(['is_active' => false]);
+
+        $this->actingAs($this->user('Author'))->get(route('journals.show', $this->b) . '?dari=dashboard')->assertNotFound();
+        $this->actingAs($this->user('Administrator'))->get(route('journals.show', $this->b) . '?dari=dashboard')->assertOk()
+            ->assertSee(self::DASHBOARD_LAYOUT, false);
     }
 
     public function test_dashboard_sidebar_link_carries_the_marker(): void

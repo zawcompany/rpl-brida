@@ -47,7 +47,7 @@ class ReviewerController extends Controller
             $request,
             'roles.reviewer.manuscripts',
             'roles.reviewer.partials.assignment-table-rows',
-            $this->reviewerService->paginateAssignments($request->user(), $request->only(self::FILTER_KEYS)),
+            $this->reviewerService->paginateAssignments($request->user(), $this->filters($request, self::FILTER_KEYS)),
             ['statuses' => Review::STATUS_LABELS]
         );
     }
@@ -59,7 +59,7 @@ class ReviewerController extends Controller
             $request,
             'roles.reviewer.manuscripts-selesai',
             'roles.reviewer.partials.assignment-table-rows',
-            $this->reviewerService->paginateAssignments($request->user(), $request->only(self::FILTER_KEYS), ['selesai'])
+            $this->reviewerService->paginateAssignments($request->user(), $this->filters($request, self::FILTER_KEYS), ['selesai'])
         );
     }
 
