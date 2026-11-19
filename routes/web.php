@@ -230,6 +230,11 @@ Route::middleware(['auth', 'role:editor', 'journal.access'])
             'detachManuscript',
         ])->name('issues.manuscripts.detach');
 
+        Route::patch('/edisi/{issue}/naskah/{manuscript}/doi', [
+            IssueController::class,
+            'setDoi',
+        ])->name('issues.manuscripts.doi');
+
         Route::post('/edisi/{issue}/publikasi', [
             IssueController::class,
             'publish',

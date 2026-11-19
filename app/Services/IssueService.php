@@ -169,6 +169,22 @@ class IssueService
         ]);
     }
 
+    /**
+     * Tetapkan (atau hapus, bila null) DOI artikel pada edisi ini. Boleh juga setelah edisi terbit,
+     * karena DOI sering baru terbit setelah artikel online. Pendaftaran DOI ke lembaga pendaftar
+     * dilakukan di luar sistem; sistem hanya menyimpan dan menampilkannya.
+     *
+     * @throws DomainException
+     */
+    public function setDoi(Issue $issue, Manuscript $manuscript, ?string $doi): void
+    {
+        if ($manuscript->issue_id !== $issue->id) {
+            throw new DomainException('Naskah ini tidak berada pada edisi tersebut.');
+        }
+
+        $manuscript->update(['doi' => $doi]);
+    }
+
     // -------------------------------------------------------------------------
     // Publikasi
     // -------------------------------------------------------------------------

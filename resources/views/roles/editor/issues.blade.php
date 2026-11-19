@@ -234,6 +234,7 @@
                         <th class="{{ $th }}">Status</th>
                         <th class="{{ $th }}">Berkas Author</th>
                         <th class="{{ $th }}">PDF Final</th>
+                        <th class="{{ $th }}">DOI</th>
                         @if ($draft)<th class="{{ $th }}">Aksi</th>@endif
                     </tr>
                 </thead>
@@ -259,6 +260,19 @@
                                 <span class="text-xs text-orange-600">Belum diunggah</span>
                             @endif
                         </td>
+                        <td class="px-6 py-3">
+                            <form method="POST" action="{{ route('editor.issues.manuscripts.doi', [$activeIssue, $m]) }}" class="flex items-center gap-1.5">
+                                @csrf @method('PATCH')
+                                <input type="text" name="doi" value="{{ old('doi_for') == $m->id ? old('doi') : $m->doi }}" placeholder="10.12345/..." maxlength="255"
+                                       aria-label="DOI untuk {{ $m->title }}"
+                                       class="w-44 text-xs border border-gray-300 rounded-md px-2 py-1.5 focus:ring-2 focus:ring-red-500 focus:border-red-500">
+                                <input type="hidden" name="doi_for" value="{{ $m->id }}">
+                                <button type="submit" class="text-xs font-medium text-red-600 hover:text-red-700">Simpan</button>
+                            </form>
+                            @if (old('doi_for') == $m->id)
+                                @error('doi') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
+                            @endif
+                        </td>
                         @if ($draft)
                         <td class="px-6 py-3">
                             <form method="POST" action="{{ route('editor.issues.manuscripts.detach', [$activeIssue, $m]) }}" onsubmit="return confirm('Keluarkan naskah dari edisi?')">
@@ -269,7 +283,7 @@
                         @endif
                     </tr>
                     @empty
-                        @include('roles.editor.partials.empty-row', ['colspan' => $draft ? 6 : 5, 'message' => 'Belum ada naskah pada edisi ini.'])
+                        @include('roles.editor.partials.empty-row', ['colspan' => $draft ? 7 : 6, 'message' => 'Belum ada naskah pada edisi ini.'])
                     @endforelse
                 </tbody>
             </table>

@@ -150,7 +150,7 @@ class LegalComplianceTest extends TestCase
     private function publishedArticle(Journal $j): Manuscript
     {
         $author = $this->user('Author');
-        $issue = Issue::create(['journal_id' => $j->id, 'volume' => 1, 'number' => 1, 'year' => 2026, 'status' => Issue::PUBLISHED, 'published_at' => now()]);
+        $issue = Issue::firstOrCreate(['journal_id' => $j->id, 'volume' => 1, 'number' => 1, 'year' => 2026], ['status' => Issue::PUBLISHED, 'published_at' => now()]);
         $f = ResearchField::firstOrCreate(['slug' => 'x'], ['name' => 'X']);
 
         return Manuscript::create([
@@ -203,6 +203,77 @@ class LegalComplianceTest extends TestCase
             ->assertJsonPath('records.0.title', 'Judul <Terbit>')
             ->assertJsonPath('records.0.subject', ['riset', 'brida'])
             ->assertJsonPath('records.0.rights', 'https://creativecommons.org/licenses/by/4.0/');
+    }
+
+    // ------------------------------------------------------------- DOI oleh editor
+
+    private function editorFor(Journal $j): User
+    {
+        $e = $this->user('Editor');
+        // Akun baru otomatis menjadi anggota jurnal bawaan; batasi hanya ke jurnal yang dimaksud.
+        $default = Journal::default();
+        if ($default && $default->id !== $j->id) {
+            $e->leaveJournal($default, Journal::EDITOR);
+        }
+        $e->joinJournal($j, Journal::EDITOR);
+
+        return $e;
+    }
+
+    public function test_editor_sets_and_clears_doi_and_url_form_is_normalized(): void
+    {
+        $j = Journal::default();
+        $a = $this->publishedArticle($j);
+        $a->update(['doi' => null]);
+        $e = $this->editorFor($j);
+        $url = route('editor.issues.manuscripts.doi', [$a->issue, $a]);
+
+        $this->actingAs($e)->patch($url, ['doi' => ' https://doi.org/10.55555/simpil.2026.001 '])->assertSessionHasNoErrors();
+        $this->assertSame('10.55555/simpil.2026.001', $a->fresh()->doi);
+
+        $this->get(route('reader.article', $a->id))->assertSee('https://doi.org/10.55555/simpil.2026.001', false);
+
+        $this->patch($url, ['doi' => ''])->assertSessionHasNoErrors();
+        $this->assertNull($a->fresh()->doi);
+    }
+
+    public function test_doi_validation_format_and_uniqueness(): void
+    {
+        $j = Journal::default();
+        $a = $this->publishedArticle($j);          // doi 10.1234/abc
+        $b = $this->publishedArticle($j);
+        $b->update(['doi' => null]);
+        $e = $this->editorFor($j);
+
+        $this->actingAs($e)->patch(route('editor.issues.manuscripts.doi', [$b->issue, $b]), ['doi' => 'bukan-doi'])
+            ->assertSessionHasErrors('doi');
+        $this->patch(route('editor.issues.manuscripts.doi', [$b->issue, $b]), ['doi' => '10.1234/abc'])
+            ->assertSessionHasErrors('doi');
+        $this->patch(route('editor.issues.manuscripts.doi', [$a->issue, $a]), ['doi' => '10.1234/abc'])
+            ->assertSessionHasNoErrors(); // DOI miliknya sendiri tidak dianggap duplikat
+    }
+
+    public function test_doi_access_is_limited_to_own_journal_and_editor_role(): void
+    {
+        $j = Journal::default();
+        $other = Journal::create(['name' => 'Jurnal Lain']);
+        $a = $this->publishedArticle($j);
+        $url = route('editor.issues.manuscripts.doi', [$a->issue, $a]);
+
+        $this->actingAs($this->editorFor($other))->patch($url, ['doi' => '10.9999/x'])->assertNotFound();
+        $this->actingAs($this->user('Author'))->patch($url, ['doi' => '10.9999/x'])->assertForbidden();
+        $this->assertSame('10.1234/abc', $a->fresh()->doi);
+    }
+
+    public function test_doi_rejects_manuscript_not_in_that_issue(): void
+    {
+        $j = Journal::default();
+        $a = $this->publishedArticle($j);
+        $other = Issue::create(['journal_id' => $j->id, 'volume' => 2, 'number' => 1, 'year' => 2026, 'status' => Issue::DRAFT]);
+
+        $this->actingAs($this->editorFor($j))->patch(route('editor.issues.manuscripts.doi', [$other, $a]), ['doi' => '10.9999/x'])
+            ->assertSessionHas('error');
+        $this->assertSame('10.1234/abc', $a->fresh()->doi);
     }
 
     public function test_metadata_export_hidden_for_inactive_journal_and_bad_format(): void

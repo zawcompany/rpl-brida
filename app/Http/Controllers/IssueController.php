@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\Editor\IssueManuscriptRequest;
 use App\Http\Requests\Editor\IssueRequest;
+use App\Http\Requests\Editor\SetDoiRequest;
 use App\Models\Issue;
 use App\Models\Journal;
 use App\Models\Manuscript;
@@ -84,6 +85,17 @@ class IssueController extends Controller
         return $this->act(
             fn () => $this->issueService->detachManuscript($issue, $manuscript),
             'Naskah dikeluarkan dari edisi.',
+            $issue
+        );
+    }
+
+    public function setDoi(SetDoiRequest $request, Issue $issue, Manuscript $manuscript): RedirectResponse
+    {
+        $doi = $request->validated('doi');
+
+        return $this->act(
+            fn () => $this->issueService->setDoi($issue, $manuscript, $doi),
+            $doi ? 'DOI disimpan.' : 'DOI dihapus.',
             $issue
         );
     }

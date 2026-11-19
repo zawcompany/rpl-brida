@@ -38,7 +38,7 @@
 <section>
     <h2>5. Penyimpanan dan keamanan</h2>
     <p>Data disimpan pada infrastruktur cloud di wilayah Indonesia (AWS Jakarta, <em>ap-southeast-3</em>), dengan pembatasan akses berbasis peran,
-       enkripsi transmisi (HTTPS), pencadangan berkala, dan pencatatan audit. Data akun disimpan selama akun aktif; naskah terbit disimpan permanen sebagai arsip ilmiah.</p>
+       @if (config('simpil.force_https')) enkripsi transmisi (HTTPS), @endif pencadangan berkala, dan pencatatan audit. Data akun disimpan selama akun aktif; naskah terbit disimpan permanen sebagai arsip ilmiah.</p>
 </section>
 
 <section>
