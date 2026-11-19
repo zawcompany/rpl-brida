@@ -208,6 +208,7 @@ class MultiJournalTest extends TestCase
     private function payload(Journal $journal): array
     {
         return [
+            'declare_originality' => '1', 'declare_copyright' => '1', 'conflict_of_interest' => 'none',
             'journal_id' => $journal->id, 'title' => 'Judul Baru', 'research_field_id' => $this->field->id,
             'abstract' => 'Abstrak lengkap.', 'keywords' => 'riset, brida', 'file' => $this->pdf(),
         ];

@@ -59,6 +59,9 @@ class AuthController extends Controller
             'name'     => ['required', 'string', 'max:255'],
             'email'    => ['required', 'email', 'max:255', 'unique:users'],
             'password' => ['required', 'confirmed', Password::min(8)],
+            'consent'  => ['accepted'],
+        ], [
+            'consent.accepted' => 'Anda harus menyetujui Kebijakan Privasi dan Syarat Penggunaan untuk mendaftar.',
         ]);
 
         // Registrasi publik selalu menghasilkan role Author
@@ -67,6 +70,9 @@ class AuthController extends Controller
             'email'    => $data['email'],
             'password' => $data['password'], // dicasting ke 'hashed' di model
             'role'     => 'Author',
+            // Bukti persetujuan pemrosesan data pribadi (UU PDP): waktu + versi kebijakan.
+            'privacy_consented_at' => now(),
+            'consent_version'      => config('simpil.legal.version'),
         ]);
 
         Auth::login($user);

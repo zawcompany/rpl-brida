@@ -33,6 +33,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Aspek legal
+    |--------------------------------------------------------------------------
+    | version : versi kebijakan privasi/syarat; disimpan bersama persetujuan pengguna (UU 27/2022).
+    | contact : alamat surel kontak pelindungan data (opsional, ditampilkan di halaman kebijakan).
+    */
+    'legal' => [
+        'version' => '2026-11',
+        'contact' => env('LEGAL_CONTACT_EMAIL'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Jaringan (di belakang load balancer / reverse proxy)
     |--------------------------------------------------------------------------
     | TRUSTED_PROXIES: '*' (semua, mis. ALB di VPC privat), atau daftar IP dipisah koma.

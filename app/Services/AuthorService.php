@@ -103,6 +103,11 @@ class AuthorService
             'file_original_name' => $file->getClientOriginalName(),
             'status'             => 'pending',
             'submitted_at'       => now(),
+            // Lisensi jurnal dicatat saat pengajuan agar tidak berubah diam-diam bila jurnal mengganti lisensinya.
+            'license'            => Journal::find($data['journal_id'])?->license ?? Journal::DEFAULT_LICENSE,
+            'declarations_accepted_at' => now(),
+            'conflict_of_interest'     => ($data['conflict_of_interest'] ?? 'none') === 'declared',
+            'conflict_note'            => ($data['conflict_of_interest'] ?? 'none') === 'declared' ? ($data['conflict_note'] ?? null) : null,
         ]);
 
         $this->notifier->manuscriptSubmitted($manuscript);

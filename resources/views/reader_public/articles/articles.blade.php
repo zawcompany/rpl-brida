@@ -48,6 +48,25 @@
                 @endif
             </dd>
         </div>
+        @php
+            $license = \App\Models\Journal::licenseInfo($article->license ?? $article->journal?->license);
+            $copyrightYear = ($article->published_at ?? $article->issue?->published_at)?->format('Y') ?? date('Y');
+        @endphp
+        @if ($article->journal)
+            <div>
+                <dt class="text-xs font-semibold uppercase tracking-wider text-gray-500">Jurnal</dt>
+                <dd class="mt-0.5 text-gray-800">
+                    <a href="{{ route('journals.show', $article->journal) }}" class="text-red-600 hover:underline">{{ $article->journal->name }}</a>
+                    @if ($article->journal->e_issn)<span class="text-gray-500">· e-ISSN {{ $article->journal->e_issn }}</span>@endif
+                </dd>
+            </div>
+        @endif
+        <div>
+            <dt class="text-xs font-semibold uppercase tracking-wider text-gray-500">Lisensi</dt>
+            <dd class="mt-0.5 text-gray-800">
+                <a href="{{ $license['url'] }}" target="_blank" rel="noopener noreferrer license" class="text-red-600 hover:underline">{{ $license['label'] }}</a>
+            </dd>
+        </div>
         <div class="sm:col-span-2">
             <dt class="text-xs font-semibold uppercase tracking-wider text-gray-500">Kata Kunci</dt>
             <dd class="mt-0.5 text-gray-800">{{ $article->keywords ?: '—' }}</dd>
@@ -57,6 +76,13 @@
             <x-public.download-button :article="$article" />
         </div>
     </dl>
+
+    <p class="mt-3 text-xs leading-relaxed text-gray-500">
+        &copy; {{ $copyrightYear }} {{ $article->authors_label }}. Artikel akses terbuka ini diterbitkan oleh
+        {{ $article->journal?->name ?? 'SIMPIL BRIDA Kota Makassar' }} di bawah lisensi
+        <a href="{{ $license['url'] }}" target="_blank" rel="noopener noreferrer license" class="text-red-600 hover:underline">{{ $license['label'] }}</a>.
+        Hak cipta tetap pada penulis.
+    </p>
 
     {{-- Abstrak --}}
     <section class="mt-6">

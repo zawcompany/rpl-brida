@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password', 'role', 'institution', 'phone', 'is_active'])]
+#[Fillable(['name', 'email', 'password', 'role', 'institution', 'phone', 'is_active', 'privacy_consented_at', 'consent_version'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements MustVerifyEmail
 {
@@ -34,6 +34,7 @@ class User extends Authenticatable implements MustVerifyEmail
         return [
             'is_active'         => 'boolean',
             'email_verified_at' => 'datetime',
+            'privacy_consented_at' => 'datetime',
             'password'          => 'hashed',
         ];
     }

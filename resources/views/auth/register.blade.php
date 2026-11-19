@@ -149,6 +149,19 @@
                     </div>
                 </div>
 
+                <!-- Persetujuan privasi (UU PDP) -->
+                <div class="flex items-start gap-2.5">
+                    <input type="checkbox" name="consent" id="consent" value="1" required @checked(old('consent'))
+                        class="mt-0.5 h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-600">
+                    <label for="consent" class="text-xs sm:text-sm text-gray-600 leading-snug">
+                        Saya telah membaca dan menyetujui
+                        <a href="{{ route('legal.privacy') }}" target="_blank" class="font-semibold text-red-600 hover:underline">Kebijakan Privasi</a>
+                        dan
+                        <a href="{{ route('legal.terms') }}" target="_blank" class="font-semibold text-red-600 hover:underline">Syarat Penggunaan</a>,
+                        termasuk pemrosesan data pribadi saya untuk keperluan pengelolaan publikasi.
+                    </label>
+                </div>
+
                 <!-- Submit Button -->
                 <div class="pt-3">
                     <button type="submit" class="w-full flex justify-center items-center py-2.5 px-4 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold text-sm transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-600 active:scale-[0.98]">

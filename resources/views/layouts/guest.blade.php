@@ -109,6 +109,9 @@
                 <a href="{{ route('reader.index') }}" class="hover:text-red-600">Artikel</a>
                 <a href="{{ route('archives.index') }}" class="hover:text-red-600">Arsip</a>
                 <a href="{{ route('home') }}#panduan" class="hover:text-red-600">Panduan Penulis</a>
+                <a href="{{ route('legal.privacy') }}" class="hover:text-red-600">Privasi</a>
+                <a href="{{ route('legal.terms') }}" class="hover:text-red-600">Syarat</a>
+                <a href="{{ route('legal.ethics') }}" class="hover:text-red-600">Etika</a>
             </div>
             <p>&copy; {{ date('Y') }} BRIDA Kota Makassar</p>
         </div>

@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8">
+<title>Dokumen Infrastruktur dan Skema Backup SIMPIL</title>
+<style>
+@page{size:A4;margin:20mm 18mm 20mm 18mm}
+*{box-sizing:border-box}
+body{font-family:"Segoe UI",Arial,sans-serif;font-size:10.5pt;line-height:1.5;color:#1f2933;margin:0}
+h1{font-size:20pt;margin:0 0 4pt;color:#232f3e}
+h2{font-size:13.5pt;color:#232f3e;border-bottom:1.5pt solid #232f3e;padding-bottom:3pt;margin:22pt 0 8pt;page-break-after:avoid}
+h3{font-size:11.5pt;color:#232f3e;margin:14pt 0 5pt;page-break-after:avoid}
+p{margin:4pt 0 6pt;text-align:justify}
+table{border-collapse:collapse;width:100%;margin:6pt 0 10pt;font-size:9.5pt;page-break-inside:auto}
+tr{page-break-inside:avoid}
+th,td{border:0.75pt solid #c5ccd3;padding:4pt 6pt;vertical-align:top;text-align:left}
+th{background:#eef1f4;font-weight:600}
+td:first-child{font-weight:600;white-space:nowrap}
+.plain td:first-child{font-weight:400;white-space:normal}
+code{font-family:Consolas,"Courier New",monospace;font-size:9pt;background:#f1f3f5;padding:0 2pt}
+pre{font-family:Consolas,"Courier New",monospace;font-size:8.8pt;background:#f6f8fa;border:0.75pt solid #d5dbe1;border-left:3pt solid #232f3e;padding:6pt 8pt;white-space:pre-wrap;word-break:break-all;margin:4pt 0 8pt;page-break-inside:avoid}
+.cover{border-bottom:2pt solid #ff9900;padding-bottom:10pt;margin-bottom:12pt}
+.meta{width:auto;font-size:9.5pt;margin-top:8pt}
+.meta td{border:none;padding:1pt 12pt 1pt 0}
+.status{border:0.75pt solid #c5ccd3;border-left:4pt solid #1b7f79;background:#f3faf9;padding:8pt 10pt;margin:8pt 0}
+.warn{border:0.75pt solid #e3c48a;border-left:4pt solid #d48806;background:#fffaf0;padding:8pt 10pt;margin:8pt 0}
+.fig{text-align:center;margin:8pt 0;page-break-inside:avoid}
+.fig img{width:100%;border:0.75pt solid #d5dbe1}
+.cap{font-size:9pt;color:#52606d;margin-top:3pt}
+ol,ul{margin:3pt 0 6pt;padding-left:18pt}
+li{margin:2pt 0}
+.small{font-size:9pt;color:#52606d}
+.pb{page-break-before:always}
+@page wide{size:A4 landscape;margin:12mm 12mm}
+.landscape{page:wide;page-break-before:always;page-break-after:always}
+.landscape .fig img{width:100%;max-height:165mm;object-fit:contain;border:none}
+</style></head><body>
+
+<div class="cover">
+<h1>Dokumen Infrastruktur dan Skema Backup</h1>
+<div style="font-size:12.5pt;color:#3e4c59">Sistem Informasi Manajemen Publikasi Ilmiah (SIMPIL) BRIDA Kota Makassar pada Amazon Web Services</div>
+<table class="meta">
+<tr><td>Versi</td><td>1.0</td></tr>
+<tr><td>Tanggal</td><td>18 November 2026</td></tr>
+<tr><td>Region AWS</td><td>Asia Pacific (Jakarta), <code>ap-southeast-3</code></td></tr>
+<tr><td>Akun AWS</td><td>940253214690</td></tr>
+<tr><td>Versi aplikasi</td><td>Image <code>demo-5</code></td></tr>
+</table>
+</div>
+
+<h2>1. Ringkasan</h2>
+<p>SIMPIL berjalan pada satu instance Amazon EC2 yang menjalankan aplikasi Laravel dalam container Docker Compose (Nginx, PHP-FPM, queue worker, dan MySQL). Berkas naskah disimpan di Amazon S3, antrean pekerjaan memakai Amazon SQS, email dikirim melalui Amazon SES, dan log serta alarm dipantau dengan Amazon CloudWatch. Rahasia aplikasi disimpan di AWS Systems Manager Parameter Store, sehingga tidak ada kredensial yang tersimpan di kode maupun di server.</p>
+
+<div class="status"><b>Status backup per 18 November 2026</b>
+<ul style="margin-bottom:0">
+<li><b>Backup harian database dan berkas ke S3: AKTIF.</b> Timer <code>simpil-backup.timer</code> berstatus <i>enabled</i> dan <i>active</i>. Uji backup pertama berhasil pada 18 November 2026 pukul 06.52 WIB (dump database 15 KB, arsip storage 1,8 MB).</li>
+<li><b>Lifecycle S3 (retensi): AKTIF.</b> Aturan <code>backups-retensi-14-hari</code> dan <code>naskah-versi-lama-30-hari</code> sudah terpasang.</li>
+<li><b>Snapshot EBS mingguan (Amazon Data Lifecycle Manager): BELUM AKTIF.</b> Konfigurasinya sudah disiapkan sebagai lapisan perlindungan tambahan yang opsional (lihat bagian 5.7).</li>
+</ul></div>
+
+<section class="landscape"><h2 style="margin-top:0">2. Arsitektur</h2>
+<div class="fig"><img src="../arsitektur_simpil_aws_v2.png" alt="Diagram arsitektur SIMPIL pada AWS">
+<div class="cap">Gambar 1. Arsitektur SIMPIL pada AWS, termasuk alur aplikasi, alur backup, dan alur rilis.</div></div></section>
+
+<p>Pengguna mengakses aplikasi melalui HTTP port 80 yang dilayani Nginx. Permintaan diteruskan ke PHP-FPM (Laravel), yang membaca dan menulis data ke MySQL, menyimpan naskah ke S3, serta mengirim pekerjaan email ke SQS. Queue worker mengambil pekerjaan dari SQS dan mengirim email melalui SES. Seluruh log container dikirim ke CloudWatch Logs. Setiap hari pukul 02.00 WIB, timer backup membuat dump MySQL dan arsip storage, lalu mengunggahnya ke S3.</p>
+
+<h2 style="margin-top:0">3. Daftar Layanan dan Konfigurasi</h2>
+<table>
+<tr><th style="width:24%">Layanan</th><th style="width:30%">Sumber daya</th><th>Konfigurasi</th></tr>
+<tr><td>Amazon EC2</td><td><code>simpil-demo</code> (<code>i-08ec05681c56b84de</code>)</td><td>Tipe t3.small, Amazon Linux 2023, Docker Compose. IMDSv2 diwajibkan. IP publik berubah setiap kali instance dihentikan lalu dinyalakan (tanpa Elastic IP). Startup otomatis lewat <code>simpil.service</code> (systemd).</td></tr>
+<tr><td>Amazon EBS</td><td><code>vol-028df7fdac2f42f76</code></td><td>gp3, 20 GB, 3.000 IOPS, 125 MB/s, terenkripsi. Menyimpan volume Docker <code>dbdata</code> (MySQL), <code>storage</code>, dan <code>publicdisk</code> (sampul edisi).</td></tr>
+<tr><td>Security group</td><td><code>simpil-sg</code></td><td>Inbound hanya TCP 80 dari 0.0.0.0/0. Port SSH (22) dan MySQL (3306) tidak dibuka.</td></tr>
+<tr><td>AWS IAM</td><td>Role <code>simpil-ec2-role</code>, instance profile <code>simpil-ec2-profile</code></td><td>Policy inline <code>simpil-app</code>: akses objek bucket S3 aplikasi, SQS <code>simpil-queue</code>, kirim email SES, pull image ECR, tulis CloudWatch Logs, baca parameter <code>/simpil/env</code>. Ditambah managed policy <code>AmazonSSMManagedInstanceCore</code>. Tidak ada access key di server.</td></tr>
+<tr><td>AWS Systems Manager</td><td>Parameter Store, Run Command, Session Manager</td><td><code>/simpil/env</code> (SecureString): isi berkas <code>.env</code> aplikasi. <code>/simpil/image-tag</code> (String): tag image yang dijalankan. Run Command dipakai untuk deploy dan pemasangan backup; Session Manager untuk akses shell tanpa SSH.</td></tr>
+<tr><td>Amazon ECR</td><td><code>simpil-app</code>, <code>simpil-web</code></td><td>Scan on push aktif, tag mutable. Tag aktif <code>demo-5</code>, tag sebelumnya <code>demo-4</code> tetap disimpan untuk rollback.</td></tr>
+<tr><td>Amazon S3</td><td><code>simpil-docs-940253214690</code></td><td>Privat (seluruh Block Public Access aktif), enkripsi SSE-S3 (AES-256), versioning aktif. Berisi naskah, template jurnal, dan prefiks <code>backups/</code>.</td></tr>
+<tr><td>S3 Lifecycle</td><td>Pada bucket di atas</td><td><code>backups-retensi-14-hari</code>: objek <code>backups/</code> dihapus setelah 14 hari, versi lama setelah 1 hari. <code>naskah-versi-lama-30-hari</code>: versi lama naskah dihapus setelah 30 hari dengan 3 versi terbaru tetap disimpan.</td></tr>
+<tr><td>Amazon SQS</td><td><code>simpil-queue</code>, <code>simpil-queue-dlq</code></td><td>Visibility timeout 120 detik, retensi pesan 4 hari. Pesan dipindah ke DLQ setelah 5 kali gagal diproses.</td></tr>
+<tr><td>Amazon SES</td><td>1 identitas email terverifikasi</td><td>Mode sandbox (hanya ke alamat terverifikasi), kuota 200 email per 24 jam.</td></tr>
+<tr><td>CloudWatch Logs</td><td><code>/simpil/ec2</code></td><td>Stream <code>app</code>, <code>queue</code>, dan <code>web</code>. Retensi 7 hari.</td></tr>
+<tr><td>CloudWatch Alarms</td><td><code>simpil-cpu-tinggi</code>, <code>simpil-status-check</code></td><td>CPU di atas 80% selama 2 × 5 menit; status check gagal selama 2 × 1 menit. Keduanya mengirim notifikasi ke SNS.</td></tr>
+<tr><td>Amazon SNS</td><td><code>simpil-alerts</code></td><td>Satu langganan email untuk notifikasi alarm.</td></tr>
+<tr><td>AWS Budgets</td><td><code>simpil-bulanan</code></td><td>Anggaran bulanan 10 USD dengan peringatan email.</td></tr>
+<tr><td>Amazon Data Lifecycle Manager</td><td>Belum dibuat</td><td>Opsional. Templat <code>deploy/backup/dlm-ebs-snapshot.json</code>: snapshot mingguan setiap Minggu pukul 02.00 WIB, menyimpan 2 snapshot terakhir.</td></tr>
+</table>
+
+<h2>4. Skema Backup</h2>
+<h3>4.1 Data yang dilindungi</h3>
+<table>
+<tr><th style="width:22%">Data</th><th style="width:30%">Lokasi utama</th><th>Perlindungan</th></tr>
+<tr><td>Database MySQL</td><td>Volume <code>dbdata</code> di EBS</td><td>Dump harian ke S3 (<code>db-*.sql.gz</code>), retensi 14 hari.</td></tr>
+<tr><td>Sampul edisi dan storage</td><td>Volume <code>storage</code> dan <code>publicdisk</code></td><td>Arsip harian ke S3 (<code>storage-*.tar.gz</code>), retensi 14 hari.</td></tr>
+<tr><td>Naskah dan template</td><td>Bucket S3</td><td>Versioning S3; versi lama disimpan 30 hari.</td></tr>
+<tr><td>Konfigurasi dan rahasia</td><td>SSM Parameter Store</td><td>Dikelola AWS; nilai dapat dibuat ulang dengan <code>deploy/aws/put-env-ssm.ps1</code>.</td></tr>
+<tr><td>Image aplikasi</td><td>Amazon ECR</td><td>Tag lama tetap tersimpan dan dapat dipakai untuk rollback.</td></tr>
+<tr><td>Seluruh disk instance</td><td>Volume EBS</td><td>Opsional: snapshot EBS mingguan melalui DLM (belum aktif).</td></tr>
+</table>
+
+<h3>4.2 Cara kerja</h3>
+<ol>
+<li>Setiap hari pukul 02.00 WIB (19.00 UTC, dengan jeda acak hingga 10 menit), systemd menjalankan <code>/usr/local/bin/simpil-backup.sh</code>. Bila instance sedang mati pada jam tersebut, backup dijalankan segera setelah instance menyala (<code>Persistent=true</code>).</li>
+<li>Skrip menjalankan <code>mysqldump --single-transaction</code> di dalam container database, sehingga snapshot konsisten diambil tanpa mengunci tabel dan aplikasi tetap dapat diakses.</li>
+<li>Hasil dump dikompres dengan gzip, lalu diuji integritasnya. Dump yang rusak atau terpotong tidak diunggah.</li>
+<li>Direktori <code>storage/app</code> diarsipkan dari container aplikasi.</li>
+<li>Kedua berkas diunggah ke <code>s3://simpil-docs-940253214690/backups/YYYY/MM/DD/</code> menggunakan IAM Role instance. Tanggal folder memakai zona waktu UTC.</li>
+<li>Aturan lifecycle S3 menghapus backup yang berumur lebih dari 14 hari, sehingga tidak diperlukan skrip pembersih.</li>
+</ol>
+
+<h3>4.3 Berkas konfigurasi di repositori</h3>
+<table class="plain">
+<tr><th style="width:38%">Berkas</th><th>Fungsi</th></tr>
+<tr><td><code>deploy/backup/simpil-backup.sh</code></td><td>Membuat dump database dan arsip storage, lalu mengunggahnya ke S3.</td></tr>
+<tr><td><code>deploy/backup/simpil-restore.sh</code></td><td>Menampilkan daftar backup dan memulihkan data dari tanggal tertentu.</td></tr>
+<tr><td><code>deploy/backup/simpil-backup.service</code>, <code>.timer</code></td><td>Unit systemd untuk penjadwalan harian.</td></tr>
+<tr><td><code>deploy/backup/s3-lifecycle.json</code></td><td>Aturan retensi bucket S3.</td></tr>
+<tr><td><code>deploy/backup/dlm-ebs-snapshot.json</code></td><td>Kebijakan snapshot EBS mingguan (opsional).</td></tr>
+<tr><td><code>deploy/backup/install.sh</code></td><td>Memasang skrip dan timer ke EC2 melalui SSM, lalu memasang lifecycle S3.</td></tr>
+</table>
+
+<h2 class="pb">5. Prosedur Pengelolaan Backup</h2>
+<p>Seluruh perintah dijalankan dari root repositori menggunakan Git Bash di workstation yang sudah login AWS CLI (<code>aws sts get-caller-identity</code> menampilkan akun 940253214690). Instance EC2 harus dalam keadaan <i>running</i>. Perintah yang diawali <code>sudo</code> dijalankan di server melalui Session Manager (Konsol EC2, pilih instance, lalu Connect, lalu Session Manager).</p>
+
+<h3>5.1 Memeriksa status backup</h3>
+<p>Di server (Session Manager):</p>
+<pre>systemctl is-enabled simpil-backup.timer     # enabled = aktif
+systemctl list-timers simpil-backup.timer    # jadwal berikutnya
+journalctl -u simpil-backup.service -n 20    # hasil backup terakhir</pre>
+<p>Dari workstation, melihat berkas backup di S3:</p>
+<pre>aws s3 ls s3://simpil-docs-940253214690/backups/ --recursive --human-readable</pre>
+
+<h3>5.2 Mengaktifkan backup harian</h3>
+<p>Backup harian saat ini sudah aktif. Prosedur ini diperlukan bila instance EC2 diganti atau dibuat ulang, karena skrip boot (<i>user-data</i>) belum memasang backup secara otomatis, atau bila backup pernah dinonaktifkan.</p>
+<pre>bash deploy/backup/install.sh</pre>
+<p>Skrip akan memasang <code>simpil-backup.sh</code>, <code>simpil-restore.sh</code>, dan unit systemd ke server melalui SSM Run Command, mengaktifkan timer, lalu memasang aturan lifecycle S3. Keberhasilan ditandai status <code>Success</code> dan baris <code>simpil-backup.timer</code> pada daftar timer.</p>
+<div class="warn">Di Windows, bila muncul galat <code>'charmap' codec can't encode character</code>, jalankan terlebih dahulu: <code>export PYTHONUTF8=1 PYTHONIOENCODING=utf-8</code>. Pemasangan aman diulang.</div>
+
+<h3>5.3 Menonaktifkan backup harian</h3>
+<pre>bash deploy/backup/install.sh --no-timer</pre>
+<p>Skrip tetap terpasang sehingga backup manual masih dapat dijalankan. Berkas backup yang sudah ada di S3 tidak dihapus dan akan terhapus otomatis sesuai retensi 14 hari.</p>
+
+<h3>5.4 Menjalankan backup manual</h3>
+<p>Disarankan sebelum perubahan besar, misalnya migrasi data atau rilis versi baru.</p>
+<pre>sudo simpil-backup.sh</pre>
+<p>Atau dari workstation tanpa membuka sesi server:</p>
+<pre>aws ssm send-command --region ap-southeast-3 --instance-ids i-08ec05681c56b84de \
+  --document-name AWS-RunShellScript \
+  --parameters '{"commands":["systemctl start simpil-backup.service"]}'</pre>
+
+<h3>5.5 Memulihkan data</h3>
+<div class="warn">Pemulihan <b>menimpa</b> data yang sedang dipakai. Skrip meminta konfirmasi dengan mengetik <code>YA</code>, lalu otomatis membuat backup darurat kondisi saat ini sebelum menimpa. Aplikasi dan worker dihentikan sementara selama proses berlangsung.</div>
+<pre>sudo simpil-restore.sh                    # daftar backup yang tersedia
+sudo simpil-restore.sh 2026/11/17         # pulihkan database dan storage
+sudo simpil-restore.sh 2026/11/17 db      # pulihkan database saja</pre>
+<p>Tanggal yang digunakan adalah nama folder di S3 (UTC). Bila ada beberapa backup pada tanggal yang sama, yang terbaru dipakai. Setelah pemulihan, periksa aplikasi melalui browser.</p>
+
+<h3>5.6 Uji pemulihan berkala</h3>
+<p>Backup baru terbukti bermanfaat bila dapat dipulihkan. Disarankan menguji minimal sekali per semester pada lingkungan uji. Cara yang tidak mengganggu data produksi adalah mengunduh dump terbaru, lalu memuatnya ke MySQL lokal:</p>
+<pre>aws s3 cp s3://simpil-docs-940253214690/backups/2026/11/17/db-20261117T235220Z.sql.gz .
+gunzip -c db-20261117T235220Z.sql.gz | mysql -u root -p simpil_uji</pre>
+
+<h3>5.7 Mengaktifkan snapshot EBS mingguan (opsional)</h3>
+<p>Snapshot EBS menyimpan salinan seluruh disk, termasuk sistem operasi dan semua volume Docker. Lapisan ini berguna bila instance rusak total. Biaya snapshot di Region Jakarta sekitar 0,055 USD per GB-bulan untuk blok yang terpakai; untuk disk ini diperkirakan 0,2 hingga 1 USD per bulan.</p>
+<ol>
+<li>Buat role default DLM (cukup sekali per akun):
+<pre>aws dlm create-default-role --region ap-southeast-3</pre></li>
+<li>Buat dan aktifkan kebijakan snapshot:
+<pre>aws dlm create-lifecycle-policy --region ap-southeast-3 --state ENABLED \
+  --description "simpil mingguan" \
+  --execution-role-arn arn:aws:iam::940253214690:role/AWSDataLifecycleManagerDefaultRole \
+  --policy-details file://deploy/backup/dlm-ebs-snapshot.json</pre></li>
+<li>Verifikasi: <code>aws dlm get-lifecycle-policies --region ap-southeast-3</code>. Snapshot pertama muncul setelah jadwal Minggu berikutnya di Konsol EC2, menu Snapshots.</li>
+</ol>
+<p>Menonaktifkan sementara atau menghapus kebijakan (gunakan <i>PolicyId</i> dari perintah verifikasi):</p>
+<pre>aws dlm update-lifecycle-policy --region ap-southeast-3 --policy-id &lt;PolicyId&gt; --state DISABLED
+aws dlm delete-lifecycle-policy --region ap-southeast-3 --policy-id &lt;PolicyId&gt;</pre>
+
+<h3>5.8 Mengamankan arsip sebelum penghapusan sumber daya</h3>
+<p>Prosedur penghapusan seluruh sumber daya (<code>deploy/aws/TEARDOWN.md</code>) ikut menghapus bucket S3 beserta folder <code>backups/</code>. Unduh arsip terlebih dahulu bila masih diperlukan:</p>
+<pre>aws s3 sync s3://simpil-docs-940253214690/backups ./backups-arsip</pre>
+
+<h2>6. Prosedur Operasional Lain</h2>
+<h3>6.1 Menyalakan dan menghentikan server</h3>
+<pre>aws ec2 start-instances --instance-ids i-08ec05681c56b84de --region ap-southeast-3
+aws ec2 stop-instances  --instance-ids i-08ec05681c56b84de --region ap-southeast-3</pre>
+<p>Saat instance dihentikan, biaya komputasi berhenti, tetapi biaya EBS dan S3 tetap berjalan. Data tidak hilang. Setelah dinyalakan, IP publik berubah dan aplikasi menyesuaikan <code>APP_URL</code> secara otomatis.</p>
+
+<h3>6.2 Merilis versi baru dan rollback</h3>
+<p>Prasyarat: Docker Desktop menyala dan instance dalam keadaan <i>running</i>.</p>
+<pre>bash deploy/aws/release.sh                      # rilis dengan tag otomatis
+bash deploy/aws/release.sh demo-6               # rilis dengan tag tertentu
+SKIP_BUILD=1 bash deploy/aws/release.sh demo-4  # rollback ke tag lama</pre>
+<p>Skrip membangun image, mengunggahnya ke ECR, memperbarui <code>/simpil/image-tag</code>, lalu memerintahkan server menarik image baru melalui SSM Run Command. Database tidak di-restart sehingga data tetap utuh. Disarankan menjalankan backup manual (5.4) sebelum rilis yang mengandung migrasi database.</p>
+
+<h2>7. Catatan Keamanan dan Biaya</h2>
+<ul>
+<li>Tidak ada rahasia di repositori maupun di skrip. Kata sandi database dibaca di dalam container; akses AWS dari server memakai IAM Role; token ECR saat rilis hanya disimpan sementara lalu dihapus.</li>
+<li>Bucket S3 bersifat privat dan terenkripsi. Berkas backup berisi data pengguna, sehingga akses ke bucket harus tetap dibatasi pada role aplikasi dan administrator.</li>
+<li>Server hanya membuka port 80. Akses administrasi dilakukan melalui Session Manager dan tercatat di AWS.</li>
+<li>Perkiraan biaya backup harian kurang dari 0,05 USD per bulan (sekitar 2 MB per hari, disimpan 14 hari). Pemakaian keseluruhan dipantau oleh AWS Budgets dengan batas 10 USD per bulan.</li>
+<li>Aplikasi saat ini dilayani melalui HTTP tanpa TLS. Untuk penggunaan produksi, disarankan menambahkan domain dan sertifikat HTTPS.</li>
+</ul>
+
+<p class="small" style="margin-top:18pt">Dokumen ini disusun berdasarkan konfigurasi AWS yang dibaca langsung pada 18 November 2026. Sumber dokumen: <code>docs/dokumen_infrastruktur_backup_simpil.html</code>.</p>
+</body></html>

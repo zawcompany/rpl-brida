@@ -51,6 +51,7 @@ class AuthorModuleTest extends TestCase
     {
         return $override + [
             'journal_id' => \App\Models\Journal::defaultId(),
+            'declare_originality' => '1', 'declare_copyright' => '1', 'conflict_of_interest' => 'none',
             'title' => 'Judul Baru', 'research_field_id' => $this->field->id,
             'abstract' => 'Abstrak lengkap.', 'keywords' => 'riset, brida',
             'co_authors' => [['name' => 'Budi', 'email' => 'budi@x.test'], ['name' => '', 'email' => '']],

@@ -120,7 +120,7 @@ class PublicService
     /** @throws \Illuminate\Database\Eloquent\ModelNotFoundException bila tidak ada / belum terbit */
     public function findPublished(int $id): Manuscript
     {
-        return Manuscript::published()->with(['author', 'researchField', 'issue'])->findOrFail($id);
+        return Manuscript::published()->with(['author', 'researchField', 'issue', 'journal'])->findOrFail($id);
     }
 
     /** Pratinjau (inline) atau unduhan (attachment, menambah penghitung) PDF artikel terbit. */

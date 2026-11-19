@@ -38,6 +38,15 @@
                     @endunless
                 </div>
                 <p class="mt-4 max-w-3xl leading-relaxed text-gray-600">{{ $journal->description ?: 'Belum ada deskripsi jurnal.' }}</p>
+                @php $license = \App\Models\Journal::licenseInfo($journal->license); @endphp
+                <p class="mt-3 text-sm text-gray-500">
+                    @if ($journal->e_issn)<span>e-ISSN <strong class="text-gray-700">{{ $journal->e_issn }}</strong></span> · @endif
+                    Akses terbuka · Lisensi <a href="{{ $license['url'] }}" target="_blank" rel="noopener noreferrer license" class="text-red-600 hover:underline">{{ $license['label'] }}</a>
+                    · Metadata:
+                    <a href="{{ route('journals.metadata', [$journal, 'xml']) }}" class="text-red-600 hover:underline">XML</a>,
+                    <a href="{{ route('journals.metadata', [$journal, 'json']) }}" class="text-red-600 hover:underline">JSON</a>
+                </p>
+
             </header>
 
             {{-- Template naskah --}}

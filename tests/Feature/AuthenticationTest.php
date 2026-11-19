@@ -18,6 +18,7 @@ class AuthenticationTest extends TestCase
             'email' => 'userkutes@example.com',
             'password' => 'password123',
             'password_confirmation' => 'password123',
+            'consent' => '1',
         ]);
 
         // Memastikan sistem mengarahkan (redirect) setelah registrasi sukses

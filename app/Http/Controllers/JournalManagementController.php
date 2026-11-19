@@ -43,9 +43,13 @@ class JournalManagementController extends Controller
             'name'         => ['required', 'string', 'max:255', 'unique:journals,name'],
             'abbreviation' => ['nullable', 'string', 'max:30'],
             'field'        => ['nullable', 'string', 'max:120'],
+            'e_issn'       => ['nullable', 'string', 'regex:' . Journal::ISSN_PATTERN],
+            'license'      => ['nullable', Rule::in(array_keys(Journal::LICENSES))],
             'description'  => ['nullable', 'string', 'max:2000'],
             'cover'        => $this->coverRules(),
-        ], $this->coverMessages());
+        ], $this->coverMessages() + ['e_issn.regex' => 'Format e-ISSN harus 0000-0000 (angka terakhir boleh X).']);
+
+        $data = $this->withoutBlankLicense($data);
 
         $journal = $this->journals->create($data, $request->file('cover'));
 
@@ -63,10 +67,13 @@ class JournalManagementController extends Controller
             'name'         => ['required', 'string', 'max:255', Rule::unique('journals', 'name')->ignore($journal->id)],
             'abbreviation' => ['nullable', 'string', 'max:30'],
             'field'        => ['nullable', 'string', 'max:120'],
+            'e_issn'       => ['nullable', 'string', 'regex:' . Journal::ISSN_PATTERN],
+            'license'      => ['nullable', Rule::in(array_keys(Journal::LICENSES))],
             'description'  => ['nullable', 'string', 'max:2000'],
             'is_active'    => ['nullable', 'boolean'],
             'cover'        => $this->coverRules(),
-        ], $this->coverMessages());
+        ], $this->coverMessages() + ['e_issn.regex' => 'Format e-ISSN harus 0000-0000 (angka terakhir boleh X).']);
+        $data = $this->withoutBlankLicense($data);
         $data['is_active'] = $request->boolean('is_active');
 
         $this->journals->update($journal, $data, $request->file('cover'), $request->boolean('remove_cover'));
@@ -107,6 +114,16 @@ class JournalManagementController extends Controller
     }
 
     // ------------------------------------------------------------------ util
+
+    /** Lisensi kosong berarti 'tidak diubah' (update) atau memakai bawaan database (buat baru). */
+    private function withoutBlankLicense(array $data): array
+    {
+        if (blank($data['license'] ?? null)) {
+            unset($data['license']);
+        }
+
+        return $data;
+    }
 
     /** Aturan unggah cover: gambar sungguhan (bukan sekadar ekstensi), batas ukuran dan resolusi sama dengan sampul edisi. */
     private function coverRules(): array

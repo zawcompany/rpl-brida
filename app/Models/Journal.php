@@ -21,12 +21,32 @@ class Journal extends Model
     /** Peran yang boleh disandang di sebuah jurnal. */
     public const ROLES = [self::AUTHOR, self::EDITOR, self::REVIEWER];
 
+    /** Lisensi terbuka yang dapat dipilih per jurnal (UU 28/2014: hak ekonomi tetap milik penulis). */
+    public const LICENSES = [
+        'CC-BY-4.0'       => ['label' => 'CC BY 4.0',       'url' => 'https://creativecommons.org/licenses/by/4.0/'],
+        'CC-BY-SA-4.0'    => ['label' => 'CC BY-SA 4.0',    'url' => 'https://creativecommons.org/licenses/by-sa/4.0/'],
+        'CC-BY-NC-4.0'    => ['label' => 'CC BY-NC 4.0',    'url' => 'https://creativecommons.org/licenses/by-nc/4.0/'],
+        'CC-BY-NC-ND-4.0' => ['label' => 'CC BY-NC-ND 4.0', 'url' => 'https://creativecommons.org/licenses/by-nc-nd/4.0/'],
+    ];
+
+    public const DEFAULT_LICENSE = 'CC-BY-4.0';
+
+    /** Format e-ISSN: 4 digit, tanda hubung, 3 digit, 1 digit/X. */
+    public const ISSN_PATTERN = '/^\d{4}-\d{3}[\dX]$/';
+
     protected $fillable = [
         'name', 'abbreviation', 'field', 'slug', 'description', 'cover_image',
         'template_path', 'template_original_name', 'template_version', 'is_active',
+        'e_issn', 'license',
     ];
 
     protected $casts = ['is_active' => 'boolean'];
+
+    /** @return array{label: string, url: string} info lisensi; nilai tak dikenal jatuh ke lisensi bawaan. */
+    public static function licenseInfo(?string $code): array
+    {
+        return self::LICENSES[$code] ?? self::LICENSES[self::DEFAULT_LICENSE];
+    }
 
     protected static function booted(): void
     {

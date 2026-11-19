@@ -38,6 +38,11 @@ class SubmitManuscriptRequest extends FormRequest
             'co_authors.*.name'    => ['required', 'string', 'max:255'],
             'co_authors.*.email'   => ['nullable', 'email', 'max:255'],
             'file'                 => ['required', 'file', new SafeDocument(['pdf', 'docx']), 'max:' . config('simpil.upload.manuscript_kb')],
+            // Pernyataan penulis (UU 28/2014 & etika publikasi)
+            'declare_originality'  => ['accepted'],
+            'declare_copyright'    => ['accepted'],
+            'conflict_of_interest' => ['required', Rule::in(['none', 'declared'])],
+            'conflict_note'        => ['required_if:conflict_of_interest,declared', 'nullable', 'string', 'max:1000'],
         ];
     }
 
@@ -64,6 +69,11 @@ class SubmitManuscriptRequest extends FormRequest
             'exists'      => ':attribute tidak valid.',
             'journal_id.in'       => 'Anda belum bergabung di jurnal tersebut. Gabung dulu dari halaman Jurnal.',
             'journal_id.required' => 'Pilih jurnal tujuan naskah.',
+            'declare_originality.accepted' => 'Anda harus menyatakan bahwa naskah ini orisinal dan belum dipublikasikan di tempat lain.',
+            'declare_copyright.accepted'   => 'Anda harus menyetujui pernyataan hak cipta dan lisensi terbuka jurnal.',
+            'conflict_of_interest.required' => 'Pilih pernyataan konflik kepentingan.',
+            'conflict_of_interest.in'       => 'Pernyataan konflik kepentingan tidak valid.',
+            'conflict_note.required_if'     => 'Jelaskan konflik kepentingan yang Anda miliki.',
             'email'       => ':attribute tidak valid.',
         ];
     }

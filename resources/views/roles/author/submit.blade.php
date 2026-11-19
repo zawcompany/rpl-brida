@@ -22,6 +22,7 @@
           coAuthors: {{ Js::from($oldCoAuthors) }},
           fileName: '',
           fileError: '',
+          coi: {{ Js::from(old('conflict_of_interest', 'none')) }},
           add() { if (this.coAuthors.length < 10) this.coAuthors.push({ name: '', email: '' }); },
           remove(i) { this.coAuthors.splice(i, 1); },
           pick(e) {
@@ -136,6 +137,47 @@
         <p x-show="fileError" x-text="fileError" class="text-xs text-red-600 mt-1"></p>
         @error('file') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
     </div>
+
+    {{-- Pernyataan penulis: keaslian, hak cipta/lisensi, konflik kepentingan --}}
+    <fieldset class="rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-4">
+        <legend class="px-2 text-sm font-semibold text-gray-700">Pernyataan Penulis <span class="text-red-500">*</span></legend>
+
+        <label class="flex items-start gap-2.5 text-sm text-gray-700">
+            <input type="checkbox" name="declare_originality" value="1" @checked(old('declare_originality')) required
+                   class="mt-0.5 h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-600">
+            <span>Saya menyatakan naskah ini <strong>orisinal</strong>, belum dipublikasikan, dan tidak sedang diajukan ke penerbit lain, serta semua penulis telah dicantumkan.
+                (<a href="{{ route('legal.ethics') }}" target="_blank" class="text-red-600 hover:underline">Etika Publikasi</a>)</span>
+        </label>
+        @error('declare_originality') <p class="text-xs text-red-600 -mt-2">{{ $message }}</p> @enderror
+
+        <label class="flex items-start gap-2.5 text-sm text-gray-700">
+            <input type="checkbox" name="declare_copyright" value="1" @checked(old('declare_copyright')) required
+                   class="mt-0.5 h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-600">
+            <span>Saya memegang hak cipta atas naskah ini dan menyetujui penerbitannya dengan <strong>lisensi terbuka Creative Commons</strong> yang ditetapkan jurnal tujuan.
+                Hak cipta tetap pada penulis (UU No. 28 Tahun 2014).
+                (<a href="{{ route('legal.terms') }}" target="_blank" class="text-red-600 hover:underline">Syarat Penggunaan</a>)</span>
+        </label>
+        @error('declare_copyright') <p class="text-xs text-red-600 -mt-2">{{ $message }}</p> @enderror
+
+        <div>
+            <p class="text-sm text-gray-700 mb-2">Konflik kepentingan</p>
+            <div class="space-y-1.5 text-sm text-gray-700">
+                <label class="flex items-center gap-2">
+                    <input type="radio" name="conflict_of_interest" value="none" x-model="coi" class="text-red-600 focus:ring-red-600">
+                    Tidak ada konflik kepentingan
+                </label>
+                <label class="flex items-center gap-2">
+                    <input type="radio" name="conflict_of_interest" value="declared" x-model="coi" class="text-red-600 focus:ring-red-600">
+                    Ada konflik kepentingan (jelaskan di bawah)
+                </label>
+            </div>
+            <textarea name="conflict_note" rows="3" maxlength="1000" x-show="coi === 'declared'" x-cloak
+                      placeholder="Jelaskan kepentingan finansial, pribadi, atau institusional yang relevan"
+                      class="{{ $input }} mt-2 border-gray-300">{{ old('conflict_note') }}</textarea>
+            @error('conflict_of_interest') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
+            @error('conflict_note') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
+        </div>
+    </fieldset>
 
     <div class="flex items-center justify-end gap-3 pt-2 border-t border-gray-100">
         <a href="{{ route('author.manuscripts.index') }}" class="px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Batal</a>

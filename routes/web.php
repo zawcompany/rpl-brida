@@ -15,6 +15,8 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PublicController;
 use App\Http\Controllers\JournalController;
+use App\Http\Controllers\LegalController;
+use App\Http\Controllers\MetadataExportController;
 use App\Http\Controllers\JournalManagementController;
 use App\Http\Controllers\ResearchFieldController;
 
@@ -50,6 +52,15 @@ Route::middleware('auth')->group(function () {
     Route::post('/jurnal/{journal}/template', [JournalController::class, 'uploadTemplate'])
         ->name('journals.template.upload');
 });
+
+// Halaman legal (publik): kebijakan privasi, syarat penggunaan, etika publikasi
+Route::get('/kebijakan-privasi', [LegalController::class, 'show'])->defaults('page', 'privacy')->name('legal.privacy');
+Route::get('/syarat-penggunaan', [LegalController::class, 'show'])->defaults('page', 'terms')->name('legal.terms');
+Route::get('/etika-publikasi', [LegalController::class, 'show'])->defaults('page', 'ethics')->name('legal.ethics');
+
+// Ekspor metadata artikel terbit per jurnal (Dublin Core XML / JSON) untuk repositori nasional & pemanen metadata
+Route::get('/jurnal/{journal}/metadata.{format}', [MetadataExportController::class, 'journal'])
+    ->whereIn('format', ['xml', 'json'])->middleware('throttle:30,1')->name('journals.metadata');
 
 // URL template lama: template kini per jurnal, jadi arahkan ke daftar jurnal.
 Route::redirect('/panduan/template', '/jurnal')->name('guide.template');

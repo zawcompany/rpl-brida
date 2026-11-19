@@ -32,6 +32,19 @@
             <label for="abbreviation" class="block text-xs font-semibold text-gray-600 mb-1.5">Singkatan</label>
             <input id="abbreviation" name="abbreviation" type="text" maxlength="30" value="{{ old('abbreviation') }}" class="{{ $input }}">
         </div>
+        <div>
+            <label for="e_issn" class="block text-xs font-semibold text-gray-600 mb-1.5">e-ISSN</label>
+            <input id="e_issn" name="e_issn" type="text" maxlength="9" placeholder="0000-0000" value="{{ old('e_issn', '') }}" class="{{ $input }}">
+            @error('e_issn') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
+        </div>
+        <div>
+            <label for="license" class="block text-xs font-semibold text-gray-600 mb-1.5">Lisensi artikel</label>
+            <select id="license" name="license" class="{{ $input }}">
+                @foreach (\App\Models\Journal::LICENSES as $code => $info)
+                    <option value="{{ $code }}" @selected(old('license', \App\Models\Journal::DEFAULT_LICENSE) === $code)>{{ $info['label'] }}</option>
+                @endforeach
+            </select>
+        </div>
         <div class="md:col-span-2">
             <label for="field" class="block text-xs font-semibold text-gray-600 mb-1.5">Bidang</label>
             <input id="field" name="field" type="text" maxlength="120" value="{{ old('field') }}" placeholder="mis. Kesehatan Masyarakat" class="{{ $input }}">

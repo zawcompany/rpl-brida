@@ -33,9 +33,15 @@ class Manuscript extends Model
         'issue_id',
         'published_at',
         'doi',
+        'license',
+        'declarations_accepted_at',
+        'conflict_of_interest',
+        'conflict_note',
     ];
 
     protected $casts = [
+        'declarations_accepted_at' => 'datetime',
+        'conflict_of_interest'     => 'boolean',
         'submitted_at' => 'datetime',
         'decided_at'   => 'datetime',
         'published_at' => 'datetime',
