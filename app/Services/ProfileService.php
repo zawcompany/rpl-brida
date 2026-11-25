@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\ActivityLog;
 use App\Models\Journal;
-use App\Models\ResearchField;
 use App\Models\User;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
@@ -24,8 +23,7 @@ class ProfileService
         private readonly EditorService $editors,
         private readonly AdminService $admins,
         private readonly ResearchFieldService $fields,
-    ) {
-    }
+    ) {}
 
     // -------------------------------------------------------------------------
     // Tampilan profil per role
@@ -35,15 +33,15 @@ class ProfileService
     public function summaryFor(User $user): array
     {
         return match ($user->role) {
-            'Author'        => $this->fromWidgets($this->authors->getDashboardStats($user)),
-            'Editor'        => $this->fromWidgets($this->editors->getDashboardStats()),
-            'Reviewer'      => [
+            'Author' => $this->fromWidgets($this->authors->getDashboardStats($user)),
+            'Editor' => $this->fromWidgets($this->editors->getDashboardStats()),
+            'Reviewer' => [
                 ['label' => 'Review Aktif',   'value' => $user->activeReviewCount()],
                 ['label' => 'Review Selesai', 'value' => $user->reviews()->where('status', 'selesai')->count()],
                 ['label' => 'Batas Beban',    'value' => User::MAX_ACTIVE_REVIEWS],
             ],
             'Administrator' => $this->adminSummary(),
-            default         => [],
+            default => [],
         };
     }
 
@@ -60,7 +58,7 @@ class ProfileService
     /**
      * Ubah data profil. Email baru membatalkan verifikasi dan mengirim ulang tautan verifikasi.
      *
-     * @param array{name: string, email: string, phone?: ?string, institution?: ?string, research_field_ids?: array} $data
+     * @param  array{name: string, email: string, phone?: ?string, institution?: ?string, research_field_ids?: array}  $data
      */
     public function update(User $user, array $data): User
     {
@@ -124,5 +122,73 @@ class ProfileService
     private function fromWidgets(array $widgets): array
     {
         return array_map(fn (array $w) => ['label' => $w['label'], 'value' => $w['count']], $widgets);
+    }
+
+    // -------------------------------------------------------------------------
+    // Hak subjek data pribadi (UU 27/2022 Pasal 7, Pasal 21 ayat (2), Pasal 32)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Riwayat kegiatan pengguna sendiri dari jejak audit.
+     *
+     * @return Collection<int, ActivityLog>
+     */
+    public function activityOf(User $user, int $limit = 20): Collection
+    {
+        return ActivityLog::where('user_id', $user->id)->latest('created_at')->latest('id')->limit($limit)->get();
+    }
+
+    /**
+     * Salinan data pribadi dalam format terbaca mesin (JSON). Hanya data milik pengguna sendiri;
+     * identitas reviewer pada naskahnya tidak disertakan (blind review).
+     *
+     * @return array<string, mixed>
+     */
+    public function exportPersonalData(User $user): array
+    {
+        $user->load(['journals', 'researchFields']);
+
+        ActivityLog::record('privacy.export', "{$user->name} mengunduh salinan data pribadinya", $user->id);
+
+        return [
+            'dibuat_pada' => now()->toIso8601String(),
+            'akun' => [
+                'nama' => $user->name,
+                'email' => $user->email,
+                'institusi' => $user->institution,
+                'telepon' => $user->phone,
+                'peran' => $user->role,
+                'email_terverifikasi' => $user->email_verified_at?->toIso8601String(),
+                'terdaftar_pada' => $user->created_at?->toIso8601String(),
+                'persetujuan_privasi' => $user->privacy_consented_at?->toIso8601String(),
+                'versi_kebijakan' => $user->consent_version,
+            ],
+            'bidang_keahlian' => $user->researchFields->pluck('name')->all(),
+            'keanggotaan_jurnal' => $user->journals->map(fn (Journal $j) => ['jurnal' => $j->name, 'peran' => $j->pivot->role])->all(),
+            'naskah' => $user->manuscripts()->get()->map(fn ($m) => [
+                'judul' => $m->title,
+                'status' => $m->status_label,
+                'diajukan_pada' => $m->submitted_at?->toIso8601String(),
+                'penulis_pendamping' => $m->co_authors,
+                'konflik_kepentingan' => $m->conflict_of_interest,
+            ])->all(),
+            'review_yang_dikerjakan' => $user->reviews()->with('manuscript:id,title')->get()->map(fn ($r) => [
+                'naskah' => $r->manuscript?->title,
+                'status' => $r->status,
+                'rekomendasi' => $r->recommendation,
+                'selesai_pada' => $r->completed_at?->toIso8601String(),
+            ])->all(),
+            'riwayat_kegiatan' => ActivityLog::where('user_id', $user->id)->latest('created_at')->get()
+                ->map(fn (ActivityLog $log) => ['waktu' => $log->created_at->toIso8601String(), 'kegiatan' => $log->description, 'ip' => $log->ip_address])
+                ->all(),
+        ];
+    }
+
+    /** Persetujuan atas kebijakan versi terbaru (akun lama, akun buatan admin, atau kebijakan yang berubah). */
+    public function acceptPolicy(User $user): void
+    {
+        $user->forceFill(['privacy_consented_at' => now(), 'consent_version' => config('simpil.legal.version')])->save();
+
+        ActivityLog::record('privacy.consent', "{$user->name} menyetujui kebijakan privasi versi ".config('simpil.legal.version'), $user->id);
     }
 }

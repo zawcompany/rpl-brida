@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 
 class ActivityLog extends Model
 {
@@ -22,10 +23,10 @@ class ActivityLog extends Model
     public static function record(string $action, string $description, ?int $actorId = null): self
     {
         return static::create([
-            'user_id'     => $actorId ?? auth()->id(),
-            'action'      => $action,
-            'description' => $description,
-            'ip_address'  => request()?->ip(),
+            'user_id' => $actorId ?? auth()->id(),
+            'action' => $action,
+            'description' => Str::limit($description, 250),
+            'ip_address' => request()?->ip(),
         ]);
     }
 }

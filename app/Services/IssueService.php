@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\ActivityLog;
 use App\Models\Issue;
 use App\Models\Manuscript;
 use App\Services\Files\CoverImageStore;
@@ -22,8 +23,7 @@ class IssueService
         private readonly ManuscriptFileStore $files,
         private readonly CoverImageStore $covers,
         private readonly NotificationService $notifier,
-    ) {
-    }
+    ) {}
 
     // -------------------------------------------------------------------------
     // Edisi
@@ -138,11 +138,11 @@ class IssueService
         }
 
         $oldPath = $manuscript->final_file_path;
-        $path    = $this->files->put($finalFile, "issues/{$issue->id}");
+        $path = $this->files->put($finalFile, "issues/{$issue->id}");
 
         $manuscript->update([
-            'issue_id'            => $issue->id,
-            'final_file_path'     => $path,
+            'issue_id' => $issue->id,
+            'final_file_path' => $path,
             'final_original_name' => $finalFile->getClientOriginalName(),
         ]);
 
@@ -163,8 +163,8 @@ class IssueService
         $this->files->delete($manuscript->final_file_path);
 
         $manuscript->update([
-            'issue_id'            => null,
-            'final_file_path'     => null,
+            'issue_id' => null,
+            'final_file_path' => null,
             'final_original_name' => null,
         ]);
     }
@@ -213,6 +213,7 @@ class IssueService
 
             $issue->manuscripts()->update(['status' => 'diterbitkan', 'published_at' => $now]);
             $issue->update(['status' => Issue::PUBLISHED, 'published_at' => $now]);
+            ActivityLog::record('issue.published', "Edisi Vol. {$issue->volume} No. {$issue->number} ({$issue->year}) diterbitkan dengan {$manuscripts->count()} artikel");
 
             $manuscripts->each(fn (Manuscript $m) => $this->notifier->published($m));
 

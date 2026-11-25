@@ -1,31 +1,32 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AuthorController;
+use App\Http\Controllers\ComplaintController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DevLoginController;
-use App\Http\Controllers\ManuscriptFileController;
 use App\Http\Controllers\EditorController;
 use App\Http\Controllers\IssueController;
-use App\Http\Controllers\ReviewerDirectoryController;
-use App\Http\Controllers\ReviewerController;
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\NotificationController;
-use App\Http\Controllers\PublicController;
 use App\Http\Controllers\JournalController;
-use App\Http\Controllers\LegalController;
-use App\Http\Controllers\MetadataExportController;
 use App\Http\Controllers\JournalManagementController;
+use App\Http\Controllers\LegalController;
+use App\Http\Controllers\ManuscriptFileController;
+use App\Http\Controllers\MetadataExportController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\PublicController;
 use App\Http\Controllers\ResearchFieldController;
+use App\Http\Controllers\ReviewerController;
+use App\Http\Controllers\ReviewerDirectoryController;
+use Illuminate\Routing\RedirectController;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
 | Web Routes
 |--------------------------------------------------------------------------
 */
-
 
 // 1. HALAMAN PUBLIK — tanpa autentikasi (beranda, artikel terbit, arsip, berkas PDF artikel terbit)
 Route::get('/', [PublicController::class, 'home'])->name('home');
@@ -107,7 +108,7 @@ Route::get('/berkas-review/{review}', [ManuscriptFileController::class, 'review'
 //    GET /logout (tombol Back / ketik URL) tidak lagi 405: diarahkan ke dashboard (tamu -> login).
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 // (Route::redirect() bersifat ANY dan akan menimpa POST di URI yang sama, jadi dibatasi ke GET/HEAD.)
-Route::match(['get', 'head'], '/logout', \Illuminate\Routing\RedirectController::class)
+Route::match(['get', 'head'], '/logout', RedirectController::class)
     ->defaults('destination', '/dashboard')->defaults('status', 302);
 
 // 4b. Profil Saya (semua role) — selalu pada user yang login, tanpa id di URL
@@ -115,6 +116,17 @@ Route::middleware('auth')->group(function () {
     Route::get('/profil', [ProfileController::class, 'show'])->name('profile.show');
     Route::put('/profil', [ProfileController::class, 'update'])->name('profile.update');
     Route::put('/profil/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
+
+    // Hak atas data pribadi: unduh salinan data dan persetujuan kebijakan versi terbaru (UU 27/2022)
+    Route::get('/profil/data-saya', [ProfileController::class, 'exportData'])
+        ->middleware('throttle:6,1')->name('profile.export');
+    Route::get('/persetujuan-kebijakan', [ProfileController::class, 'consent'])->name('consent.show');
+    Route::post('/persetujuan-kebijakan', [ProfileController::class, 'acceptConsent'])->name('consent.accept');
+
+    // Pengaduan dan keberatan (UU 25/2009 Pasal 36)
+    Route::get('/pengaduan', [ComplaintController::class, 'index'])->name('complaints.index');
+    Route::post('/pengaduan', [ComplaintController::class, 'store'])->middleware('throttle:10,1')->name('complaints.store');
+    Route::get('/pengaduan/{complaint}', [ComplaintController::class, 'show'])->whereNumber('complaint')->name('complaints.show');
 
     // Verifikasi email
     Route::redirect('/email/verifikasi', '/profil')->name('verification.notice');
@@ -367,6 +379,14 @@ Route::middleware(['auth', 'role:admin'])
         Route::get('/bidang-keahlian', [ResearchFieldController::class, 'index'])->name('fields.index');
         Route::post('/bidang-keahlian', [ResearchFieldController::class, 'store'])->name('fields.store');
         Route::put('/bidang-keahlian/{field}', [ResearchFieldController::class, 'update'])->name('fields.update');
+
+        // Pengaduan, jejak audit, dan pemberitahuan
+        Route::get('/pengaduan', [ComplaintController::class, 'adminIndex'])->name('complaints.index');
+        Route::get('/pengaduan/{complaint}', [ComplaintController::class, 'adminShow'])->whereNumber('complaint')->name('complaints.show');
+        Route::put('/pengaduan/{complaint}', [ComplaintController::class, 'adminUpdate'])->whereNumber('complaint')->name('complaints.update');
+        Route::get('/log-aktivitas', [AdminController::class, 'logs'])->name('logs.index');
+        Route::get('/pemberitahuan', [AdminController::class, 'announcement'])->name('announcement.create');
+        Route::post('/pemberitahuan', [AdminController::class, 'sendAnnouncement'])->middleware('throttle:10,1')->name('announcement.store');
 
         // Role & Hak Akses
         Route::get('/role', [

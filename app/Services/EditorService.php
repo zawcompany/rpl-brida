@@ -2,10 +2,11 @@
 
 namespace App\Services;
 
+use App\Models\ActivityLog;
 use App\Models\Journal;
 use App\Models\Manuscript;
-use App\Models\Review;
 use App\Models\ResearchField;
+use App\Models\Review;
 use App\Models\User;
 use App\Notifications\ReviewReminderNotification;
 use DomainException;
@@ -22,9 +23,7 @@ use Illuminate\Support\Facades\DB;
  */
 class EditorService
 {
-    public function __construct(private readonly NotificationService $notifier)
-    {
-    }
+    public function __construct(private readonly NotificationService $notifier) {}
 
     /** Durasi default review (hari) sejak penugasan. */
     public const REVIEW_DURATION_DAYS = 14;
@@ -57,7 +56,7 @@ class EditorService
      */
     public function getDashboardStats(): array
     {
-        $lastMonth  = Carbon::now()->subMonth();
+        $lastMonth = Carbon::now()->subMonth();
         $journalIds = $this->journalIds();
 
         $widgets = [
@@ -80,11 +79,11 @@ class EditorService
                 : ($current > 0 ? 100.0 : 0.0);
 
             return [
-                'label'            => $widget['label'],
-                'icon'             => $widget['icon'],
-                'color'            => $widget['color'],
-                'count'            => $current,
-                'change_percent'   => abs($change),
+                'label' => $widget['label'],
+                'icon' => $widget['icon'],
+                'color' => $widget['color'],
+                'count' => $current,
+                'change_percent' => abs($change),
                 'change_direction' => $change >= 0 ? 'up' : 'down',
             ];
         })->all();
@@ -158,7 +157,7 @@ class EditorService
      * paling sedikit (Load Balancing), seri diputus berdasarkan nama agar deterministik.
      * Editor tetap bebas memilih siapa pun dari getAssignableReviewers().
      *
-     * @param int[] $excludeReviewerIds reviewer yang dikecualikan (mis. saat penggantian)
+     * @param  int[]  $excludeReviewerIds  reviewer yang dikecualikan (mis. saat penggantian)
      * @return Collection<int, array{id: int, name: string, email: string, active_load: int, field_match: bool}>
      */
     public function getRecommendedReviewers(Manuscript $manuscript, array $excludeReviewerIds = [], int $limit = Manuscript::REQUIRED_REVIEWERS): Collection
@@ -171,9 +170,9 @@ class EditorService
             ->limit($limit)
             ->get()
             ->map(fn (User $u) => [
-                'id'          => $u->id,
-                'name'        => $u->name,
-                'email'       => $u->email,
+                'id' => $u->id,
+                'name' => $u->name,
+                'email' => $u->email,
                 'active_load' => (int) $u->active_load,
                 'field_match' => (bool) $u->field_match,
             ]);
@@ -185,7 +184,7 @@ class EditorService
      *
      * Bila $manuscript diberikan, hanya reviewer yang menjadi anggota jurnal naskah itu yang ditawarkan.
      *
-     * @param int[] $excludeReviewerIds
+     * @param  int[]  $excludeReviewerIds
      * @return Collection<int, array{id: int, name: string, active_load: int}>
      */
     public function getAssignableReviewers(array $excludeReviewerIds = [], ?Manuscript $manuscript = null): Collection
@@ -196,8 +195,8 @@ class EditorService
             ->orderBy('name')
             ->get()
             ->map(fn (User $u) => [
-                'id'          => $u->id,
-                'name'        => $u->name,
+                'id' => $u->id,
+                'name' => $u->name,
                 'active_load' => (int) $u->active_load,
             ]);
     }
@@ -206,7 +205,7 @@ class EditorService
      * Reviewer + `active_load` (review belum selesai) dan, bila bidang diberikan, `field_match`.
      * Dibatasi ke reviewer yang menjadi anggota salah satu $journalIds (null = semua jurnal).
      *
-     * @param int[]|null $journalIds
+     * @param  int[]|null  $journalIds
      */
     private function reviewersWithLoad(?int $researchFieldId = null, ?array $journalIds = null): Builder
     {
@@ -243,11 +242,12 @@ class EditorService
 
         return DB::transaction(function () use ($manuscript, $decision, $reviewerIds, $editorNote, $editorId, $dueAt) {
             $manuscript->editor_note = $editorNote;
-            $manuscript->status      = Manuscript::INITIAL_DECISION_STATUS[$decision];
+            $manuscript->status = Manuscript::INITIAL_DECISION_STATUS[$decision];
 
             if ($manuscript->status === 'ditolak') {
                 $manuscript->decided_at = now();
                 $manuscript->save();
+                ActivityLog::record('manuscript.initial_decision', "Naskah \"{$manuscript->title}\" ditolak pada pemeriksaan awal", $editorId);
                 $this->notifier->initialDecision($manuscript);
 
                 return $manuscript;
@@ -256,6 +256,7 @@ class EditorService
             $manuscript->save();
 
             $this->assignReviewers($manuscript, $reviewerIds, $editorId, $dueAt);
+            ActivityLog::record('manuscript.initial_decision', "Naskah \"{$manuscript->title}\" diterima untuk direview", $editorId);
             $this->notifier->initialDecision($manuscript);
 
             return $manuscript->refresh();
@@ -271,7 +272,8 @@ class EditorService
     /**
      * Buat penugasan untuk tepat REQUIRED_REVIEWERS reviewer berbeda.
      *
-     * @param int[] $reviewerIds
+     * @param  int[]  $reviewerIds
+     *
      * @throws DomainException
      */
     private function assignReviewers(Manuscript $manuscript, array $reviewerIds, int $editorId, ?string $dueAt = null): void
@@ -279,7 +281,7 @@ class EditorService
         $reviewerIds = array_values(array_unique($reviewerIds));
 
         if (count($reviewerIds) !== Manuscript::REQUIRED_REVIEWERS) {
-            throw new DomainException('Naskah harus direview oleh tepat ' . Manuscript::REQUIRED_REVIEWERS . ' reviewer yang berbeda.');
+            throw new DomainException('Naskah harus direview oleh tepat '.Manuscript::REQUIRED_REVIEWERS.' reviewer yang berbeda.');
         }
 
         foreach ($reviewerIds as $reviewerId) {
@@ -300,10 +302,10 @@ class EditorService
 
         $review = Review::create([
             'manuscript_id' => $manuscript->id,
-            'reviewer_id'   => $reviewerId,
-            'assigned_by'   => $editorId,
-            'status'        => 'ditugaskan',
-            'due_at'        => filled($dueAt) ? Carbon::parse($dueAt)->endOfDay() : now()->addDays(self::REVIEW_DURATION_DAYS),
+            'reviewer_id' => $reviewerId,
+            'assigned_by' => $editorId,
+            'status' => 'ditugaskan',
+            'due_at' => filled($dueAt) ? Carbon::parse($dueAt)->endOfDay() : now()->addDays(self::REVIEW_DURATION_DAYS),
         ])->setRelation('manuscript', $manuscript);
 
         $this->notifier->reviewerAssigned($review);
@@ -320,6 +322,7 @@ class EditorService
      * (dalam masa jeda) dilewati.
      *
      * @return int jumlah reviewer yang diingatkan
+     *
      * @throws DomainException bila tidak ada review berjalan atau semua masih dalam masa jeda
      */
     public function sendReminder(Manuscript $manuscript): int
@@ -336,7 +339,7 @@ class EditorService
         );
 
         if ($due->isEmpty()) {
-            throw new DomainException('Pengingat sudah dikirim dalam ' . self::REMINDER_COOLDOWN_HOURS . ' jam terakhir.');
+            throw new DomainException('Pengingat sudah dikirim dalam '.self::REMINDER_COOLDOWN_HOURS.' jam terakhir.');
         }
 
         foreach ($due as $review) {
@@ -388,7 +391,8 @@ class EditorService
      * Revisi mayor mengembalikan naskah ke author (status 'revisi'). Revisi minor diselesaikan editor sendiri:
      * status 'disetujui', author tidak diminta mengunggah ulang.
      *
-     * @param string $decision kunci dari Manuscript::DECISION_STATUS (diterima|revisi_minor|revisi_mayor|ditolak)
+     * @param  string  $decision  kunci dari Manuscript::DECISION_STATUS (diterima|revisi_minor|revisi_mayor|ditolak)
+     *
      * @throws DomainException bila naskah tidak sedang menunggu keputusan
      */
     public function recordEditorialDecision(Manuscript $manuscript, string $decision, ?string $note): Manuscript
@@ -396,11 +400,12 @@ class EditorService
         $this->ensureStatus($manuscript, ['menunggu_keputusan'], 'Naskah ini tidak sedang menunggu keputusan editorial.');
 
         $manuscript->update([
-            'status'         => Manuscript::DECISION_STATUS[$decision],
+            'status' => Manuscript::DECISION_STATUS[$decision],
             'editorial_note' => $note,
-            'decided_at'     => now(),
+            'decided_at' => now(),
         ]);
 
+        ActivityLog::record('manuscript.decision', 'Keputusan editorial "'.Manuscript::DECISION_LABELS[$decision]."\" untuk naskah \"{$manuscript->title}\"");
         $this->notifier->editorialDecision($manuscript, Manuscript::DECISION_LABELS[$decision], $decision === 'revisi_minor');
 
         return $manuscript;
@@ -433,7 +438,7 @@ class EditorService
     /**
      * Rangkuman rekomendasi reviewer untuk editor: jumlah per rekomendasi, mis. "Revisi Minor x2".
      *
-     * @param Collection<int, Review> $reviews review yang sudah selesai
+     * @param  Collection<int, Review>  $reviews  review yang sudah selesai
      * @return array<int, array{label: string, count: int, class: string}>
      */
     public function summarizeRecommendations(Collection $reviews): array
@@ -481,11 +486,11 @@ class EditorService
         $activeLoad = $reviewer->activeReviewCount();
 
         return [
-            'reviewer'  => $reviewer,
-            'active'    => $activeLoad,
+            'reviewer' => $reviewer,
+            'active' => $activeLoad,
             'completed' => $reviewer->reviews()->where('status', 'selesai')->count(),
-            'is_busy'   => $activeLoad >= User::MAX_ACTIVE_REVIEWS,
-            'history'   => $history,
+            'is_busy' => $activeLoad >= User::MAX_ACTIVE_REVIEWS,
+            'history' => $history,
         ];
     }
 

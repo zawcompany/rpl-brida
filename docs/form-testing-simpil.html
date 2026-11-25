@@ -1,0 +1,561 @@
+<title>Form Testing SIMPIL</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap">
+<style>
+/* Layout: ringkasan di atas, lalu toolbar filter, daftar kasus uji per bagian, lalu temuan tambahan. */
+:root {
+  --bg: #f5f7f8; --surface: #ffffff; --surface-2: #eef2f4; --line: #d9e0e4;
+  --fg: #16222a; --muted: #5b6b75; --accent: #0b6e7f; --accent-fg: #ffffff;
+  --pass: #1f8a4c; --pass-bg: #e2f4ea; --fail: #c4352b; --fail-bg: #fbe7e5;
+  --block: #a8700a; --block-bg: #fbf0d9; --todo: #7a8891; --todo-bg: #e8edf0;
+  --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-head: "Space Grotesk", "Inter", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f171c; --surface: #172229; --surface-2: #1d2b33; --line: #2c3c46;
+  --fg: #e6eef2; --muted: #93a5b0; --accent: #4cc3d6; --accent-fg: #07262c;
+  --pass: #55c785; --pass-bg: #163626; --fail: #ff7a6f; --fail-bg: #3d1d1a;
+  --block: #e5b04a; --block-bg: #3a2d10; --todo: #93a5b0; --todo-bg: #22323b;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0f171c; --surface: #172229; --surface-2: #1d2b33; --line: #2c3c46;
+  --fg: #e6eef2; --muted: #93a5b0; --accent: #4cc3d6; --accent-fg: #07262c;
+  --pass: #55c785; --pass-bg: #163626; --fail: #ff7a6f; --fail-bg: #3d1d1a;
+  --block: #e5b04a; --block-bg: #3a2d10; --todo: #93a5b0; --todo-bg: #22323b;
+  color-scheme: dark; }
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 24px 64px; }
+.wrap { max-width: 980px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; }
+h1, h2, h3 { font-family: var(--font-head); text-wrap: balance; margin: 0; }
+h1 { font-size: 1.75rem; letter-spacing: -0.01em; }
+h2 { font-size: 1.2rem; }
+p { margin: 0; }
+.muted { color: var(--muted); }
+.eyebrow { font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button, input, select, textarea { font: inherit; color: inherit; }
+
+header { display: flex; flex-direction: column; gap: 8px; }
+.banner { padding: 10px 14px; border-radius: 8px; background: var(--block-bg); color: var(--block); font-size: 0.9rem; }
+.banner.err { background: var(--fail-bg); color: var(--fail); }
+
+.who { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 14px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+.who label { font-weight: 600; }
+.who input { flex: 1 1 220px; min-width: 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); }
+.who input.need { border-color: var(--fail); box-shadow: 0 0 0 3px var(--fail-bg); }
+
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+.tile { text-align: left; padding: 12px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; cursor: pointer; display: flex; flex-direction: column; gap: 2px; }
+.tile[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent) inset; }
+.tile .n { font-family: var(--font-head); font-size: 1.7rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.tile .l { font-size: 0.8rem; color: var(--muted); }
+.tile.pass .n { color: var(--pass); } .tile.fail .n { color: var(--fail); } .tile.block .n { color: var(--block); }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.prog { display: grid; grid-template-columns: minmax(120px, 1.2fr) 80px 3fr 56px; gap: 8px 12px; align-items: center; font-size: 0.9rem; }
+.prog .head { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.bar { display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: var(--todo-bg); }
+.bar i { display: block; height: 100%; }
+.bar .p { background: var(--pass); } .bar .f { background: var(--fail); } .bar .b { background: var(--block); }
+.num { font-variant-numeric: tabular-nums; text-align: right; color: var(--muted); }
+.sev { display: flex; flex-wrap: wrap; gap: 8px; font-size: 0.85rem; }
+.chip { padding: 3px 10px; border-radius: 99px; background: var(--surface-2); border: 1px solid var(--line); font-size: 0.82rem; }
+.chip.on { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+button.chip { cursor: pointer; }
+
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+.toolbar .group { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.toolbar select { padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+
+.section { display: flex; flex-direction: column; gap: 10px; }
+.section > header { flex-direction: row; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; }
+.case { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--todo); border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+.case[data-s="lolos"] { border-left-color: var(--pass); }
+.case[data-s="gagal"] { border-left-color: var(--fail); }
+.case[data-s="blokir"] { border-left-color: var(--block); }
+.case-head { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: flex-start; justify-content: space-between; }
+.case .txt { flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.case .id { font-family: var(--font-head); font-weight: 700; font-size: 0.85rem; color: var(--accent); letter-spacing: 0.03em; }
+.case .sc { font-weight: 500; overflow-wrap: anywhere; }
+.case .ex { font-size: 0.88rem; color: var(--muted); overflow-wrap: anywhere; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; flex: 0 0 auto; }
+.seg button { padding: 6px 12px; background: var(--surface); border: 0; border-right: 1px solid var(--line); cursor: pointer; font-size: 0.85rem; }
+.seg button:last-child { border-right: 0; }
+.seg button:hover { background: var(--surface-2); }
+.seg button[aria-pressed="true"][data-v="lolos"] { background: var(--pass); color: #fff; }
+.seg button[aria-pressed="true"][data-v="gagal"] { background: var(--fail); color: #fff; }
+.seg button[aria-pressed="true"][data-v="blokir"] { background: var(--block); color: #fff; }
+.seg button[aria-pressed="true"][data-v="belum"] { background: var(--todo-bg); font-weight: 600; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; font-size: 0.82rem; color: var(--muted); }
+.link { background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; text-decoration: underline; font-size: 0.82rem; }
+.fixed { color: var(--pass); font-weight: 600; }
+.detail { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding-top: 4px; border-top: 1px dashed var(--line); }
+.detail .full { grid-column: 1 / -1; }
+.detail label { display: flex; flex-direction: column; gap: 4px; font-size: 0.82rem; color: var(--muted); font-weight: 500; }
+.detail textarea, .detail input[type="text"], .detail input[type="url"], .detail select { padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--fg); min-width: 0; width: 100%; }
+.detail textarea { min-height: 76px; resize: vertical; }
+.check { flex-direction: row !important; align-items: center; gap: 8px !important; }
+.hint { font-size: 0.78rem; color: var(--muted); }
+.evid a { color: var(--accent); overflow-wrap: anywhere; }
+
+.empty { padding: 20px; text-align: center; color: var(--muted); border: 1px dashed var(--line); border-radius: 8px; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.form-grid .full { grid-column: 1 / -1; }
+.form-grid label { display: flex; flex-direction: column; gap: 4px; font-size: 0.82rem; color: var(--muted); font-weight: 500; }
+.form-grid input, .form-grid textarea, .form-grid select { padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--fg); width: 100%; min-width: 0; }
+.btn { padding: 9px 16px; border-radius: 8px; border: 0; background: var(--accent); color: var(--accent-fg); font-weight: 600; cursor: pointer; justify-self: start; }
+.finding { padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); display: flex; flex-direction: column; gap: 4px; }
+.finding .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.finding .t { font-weight: 600; overflow-wrap: anywhere; }
+.finding .s { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 0.9rem; }
+
+@media (max-width: 640px) {
+  .detail, .form-grid { grid-template-columns: 1fr; }
+  .prog { grid-template-columns: 1fr 1fr 56px; }
+  .prog .bar { grid-column: 1 / -1; order: 5; }
+  .prog .head { display: none; }
+  .seg { width: 100%; } .seg button { flex: 1; padding: 8px 4px; }
+}
+@media (prefers-reduced-motion: no-preference) { .case { transition: border-color .15s; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Pengujian di server publik</p>
+    <h1>Form Testing SIMPIL</h1>
+    <p class="muted">Buka SIMPIL di tab lain, jalankan skenario, lalu catat hasilnya di sini. Hasil tersimpan otomatis dan langsung terlihat oleh seluruh tim.</p>
+  </header>
+
+  <div id="banner" class="banner" hidden></div>
+
+  <div class="who">
+    <label for="tester">Nama penguji</label>
+    <input id="tester" type="text" placeholder="Contoh: P2 - Nama Anda" autocomplete="name" maxlength="60">
+    <span class="hint">Wajib diisi sebelum mencatat hasil.</span>
+  </div>
+
+  <section aria-label="Ringkasan" style="display:flex;flex-direction:column;gap:12px">
+    <div class="tiles" id="tiles"></div>
+    <div class="card">
+      <h2>Progres per bagian</h2>
+      <div class="prog" id="prog"></div>
+      <div class="sev" id="sev"></div>
+    </div>
+  </section>
+
+  <section class="section" aria-label="Kasus uji">
+    <div class="toolbar">
+      <div class="group" id="ownerChips" role="group" aria-label="Filter penguji"></div>
+      <div class="group">
+        <label for="fStatus" class="muted">Status</label>
+        <select id="fStatus">
+          <option value="">Semua</option><option value="belum">Belum diuji</option>
+          <option value="lolos">Lolos</option><option value="gagal">Gagal</option>
+          <option value="blokir">Terblokir</option><option value="gagal-open">Gagal, belum diperbaiki</option>
+        </select>
+      </div>
+    </div>
+    <div id="list" class="section"></div>
+  </section>
+
+  <section class="section" aria-label="Temuan tambahan">
+    <header><h2>Temuan tambahan</h2><span class="muted">Bug di luar daftar skenario di atas</span></header>
+    <div class="card">
+      <form id="ff" class="form-grid">
+        <label class="full">Judul temuan<input id="fTitle" type="text" maxlength="140" required></label>
+        <label>Tingkat keparahan
+          <select id="fSev"><option>Sedang</option><option>Kritis</option><option>Tinggi</option><option>Rendah</option></select></label>
+        <label>Halaman / URL (opsional)<input id="fUrl" type="text" maxlength="300" placeholder="/author/naskah-baru"></label>
+        <label class="full">Langkah reproduksi dan hasil yang terjadi<textarea id="fSteps" rows="4" maxlength="2000" required></textarea></label>
+        <button class="btn" type="submit">Kirim temuan</button>
+      </form>
+    </div>
+    <div id="findings" class="section"></div>
+  </section>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---------------------------------------------------------------- data uji
+  var SECTIONS = {
+    AUTO: { label: "Tes otomatis dan smoke test", owner: "P1" },
+    PUB:  { label: "Halaman publik (tanpa login)", owner: "P2" },
+    AUT:  { label: "Role Author", owner: "P2" },
+    EDT:  { label: "Role Editor", owner: "P3" },
+    ADM:  { label: "Role Admin", owner: "P4" },
+    REV:  { label: "Role Reviewer", owner: "P4" },
+    SEC:  { label: "Keamanan", owner: "Semua" },
+    NF:   { label: "Non-fungsional dan kompatibilitas", owner: "Semua" },
+    E2E:  { label: "Skenario end-to-end", owner: "Semua" }
+  };
+  var CASES = [
+    ["AUTO-01","Jalankan php artisan test","Semua tes hijau (229 tes)"],
+    ["AUTO-02","Jalankan deploy/smoke-test.ps1 ke IP publik","Tidak ada FAIL"],
+
+    ["PUB-01","Buka beranda","Tampil tanpa error, cover jurnal dan artikel terbit muncul"],
+    ["PUB-02","Buka /articles, cari dan filter artikel","Hasil sesuai, pagination jalan"],
+    ["PUB-03","Buka detail artikel terbit","Judul, abstrak, penulis, DOI (jika ada) tampil"],
+    ["PUB-04","Unduh PDF artikel terbit","File terunduh dan terbuka"],
+    ["PUB-05","Buka /archives lalu satu edisi","Daftar artikel edisi tampil"],
+    ["PUB-06","Buka /jurnal lalu halaman satu jurnal","Info jurnal, e-ISSN, cover tampil"],
+    ["PUB-07","Buka /jurnal/{id}/metadata.xml dan .json","XML dan JSON valid (Dublin Core)"],
+    ["PUB-08","Buka Kebijakan Privasi, Syarat Penggunaan, Etika Publikasi","Ketiganya terbuka"],
+    ["PUB-09","Buka artikel yang belum terbit lewat ubah ID di URL","404, tidak ada data bocor"],
+    ["PUB-10","Tamu membuka /jurnal/{id}/template","Diminta login"],
+
+    ["AUT-01","Registrasi akun baru (centang persetujuan privasi)","Masuk ke dashboard Author"],
+    ["AUT-02","Registrasi: password kurang dari 8, konfirmasi beda, email dobel, tanpa centang persetujuan","Ditolak dengan pesan jelas"],
+    ["AUT-03","Login benar dan salah; 6 kali salah berturut-turut","Salah: pesan error. Percobaan ke-6 diblokir sementara"],
+    ["AUT-04","Gabung jurnal lalu unduh template jurnal","Berhasil gabung, template terunduh"],
+    ["AUT-05","Submit naskah valid (PDF/DOCX, ko-penulis, deklarasi)","Naskah berstatus Pending dan muncul di Naskah Saya"],
+    ["AUT-06","Submit tanpa file, tanpa deklarasi, atau judul kosong","Ditolak"],
+    ["AUT-07","Upload file .exe diganti nama .pdf, DOCX bermakro, file terlalu besar","Ditolak"],
+    ["AUT-08","Lihat detail naskah dan status","Status sesuai alur"],
+    ["AUT-09","Setelah editor minta revisi: baca catatan reviewer, unggah revisi","Revisi tersimpan, status berubah, editor dapat notifikasi"],
+    ["AUT-10","Notifikasi: buka, tandai baca, baca semua","Counter berkurang"],
+    ["AUT-11","Profil: ubah data, ganti password (coba password lama salah)","Sukses atau ditolak sesuai kasus"],
+    ["AUT-12","Akses /admin/dashboard dan /editor/dashboard sebagai Author","403"],
+    ["AUT-13","Buka naskah milik author lain dengan ubah ID di URL","403 atau 404"],
+    ["AUT-14","Keluar dari jurnal (leave)","Berhasil"],
+    ["AUT-15","Logout, lalu tekan tombol Back browser","Halaman terlindungi tidak bisa dilihat"],
+
+    ["EDT-01","Buka dashboard Editor","Statistik sesuai data"],
+    ["EDT-02","Naskah Baru: buka detail, unduh file","Benar"],
+    ["EDT-03","Assign reviewer: kurang dari 3, tepat 3, reviewer dobel, reviewer tak sesuai bidang","Aturan 3 reviewer berlaku, status jadi Sedang Ditinjau"],
+    ["EDT-04","Direktori reviewer dan profil keahlian","Tampil, filter bidang bekerja"],
+    ["EDT-05","Peninjauan: kirim pengingat, ganti reviewer","Reviewer dapat notifikasi atau email"],
+    ["EDT-06","Keputusan: diterima, revisi minor, revisi mayor, ditolak","Status naskah sesuai, author diberi notifikasi"],
+    ["EDT-07","Minta review ulang setelah revisi","Kembali ke tahap review"],
+    ["EDT-08","Buat edisi baru (volume, nomor, tahun, cover)","Edisi tersimpan"],
+    ["EDT-09","Attach naskah disetujui ke edisi dan isi DOI","Tersimpan, format DOI valid"],
+    ["EDT-10","Detach naskah, edit edisi, hapus edisi","Sesuai aturan; edisi terbit tidak sembarang terhapus"],
+    ["EDT-11","Publikasikan edisi","Artikel tampil di halaman publik"],
+    ["EDT-12","Kelola anggota jurnal (tambah dan hapus Author atau Reviewer)","Berhasil"],
+    ["EDT-13","Editor jurnal A mengakses data jurnal B","Ditolak"],
+    ["EDT-14","Akses /admin/* dan /author/* sebagai Editor","403"],
+
+    ["ADM-01","Dashboard Admin: statistik dan 5 log terbaru","Tampil"],
+    ["ADM-02","Tambah pengguna (tiap role), email dobel, password lemah","Sukses atau ditolak sesuai kasus"],
+    ["ADM-03","Edit pengguna dan ubah role","Role baru berlaku saat login ulang"],
+    ["ADM-04","Suspend pengguna yang sedang login di browser lain","Pengguna langsung keluar pada request berikutnya"],
+    ["ADM-05","Reset password pengguna","Password lama tidak berlaku lagi"],
+    ["ADM-06","Kelola jurnal: buat, ubah (e-ISSN, cover), kelola anggota","Tersimpan dan tampil di /jurnal"],
+    ["ADM-07","Bidang keahlian: tambah, ubah, nonaktifkan","Muncul di form naskah dan profil reviewer"],
+    ["ADM-08","Halaman Role dan Hak Akses","Informasi sesuai"],
+    ["ADM-09","Admin menonaktifkan atau menurunkan role akunnya sendiri","Sesuai aturan (idealnya dicegah)"],
+    ["ADM-10","Akses /author/*, /editor/*, /reviewer/* sebagai Admin","403"],
+
+    ["REV-01","Dashboard dan Naskah Ditugaskan","Hanya penugasan miliknya"],
+    ["REV-02","Buka detail penugasan dan unduh naskah","Sesuai aturan (identitas author disembunyikan bila blind review)"],
+    ["REV-03","Terima penugasan","Status review menjadi diterima"],
+    ["REV-04","Tolak penugasan dengan alasan","Editor mendapat notifikasi"],
+    ["REV-05","Submit hasil review (rekomendasi, catatan, lampiran)","Tersimpan, pindah ke Naskah Selesai"],
+    ["REV-06","Submit tanpa isi wajib atau lampiran tidak valid","Ditolak"],
+    ["REV-07","Edit hasil review yang sudah dikirim","Sesuai aturan (boleh atau tidak sebelum keputusan)"],
+    ["REV-08","Buka review milik reviewer lain dengan ubah ID","403 atau 404"],
+    ["REV-09","Reviewer tanpa penugasan membuka /berkas/{id}/original","403"],
+    ["REV-10","Atur bidang keahlian di profil","Tersimpan, tampil di direktori editor"],
+
+    ["SEC-01","Brute force login (6 kali lebih, cepat)","Diblokir (429)"],
+    ["SEC-02","Isi nama, judul, abstrak dengan <script>alert(1)</script> dan \"><img src=x onerror=alert(1)>","Tampil sebagai teks, tidak dieksekusi"],
+    ["SEC-03","Ubah ID di URL (naskah, review, notifikasi, pengguna) ke milik orang lain","403 atau 404"],
+    ["SEC-04","Registrasi dengan menambah field role=Administrator lewat DevTools","Tetap Author"],
+    ["SEC-05","Hapus token CSRF dari form lalu kirim","419"],
+    ["SEC-06","Buka /.env, /.git/config, /storage/logs/laravel.log, /vendor/","403 atau 404"],
+    ["SEC-07","Cek cookie sesi di DevTools: HttpOnly, SameSite, Secure (jika HTTPS)","Flag terpasang"],
+    ["SEC-08","Setelah logout, tekan Back dan buka URL dashboard di tab baru","Dialihkan ke login"],
+    ["SEC-09","Unggah file palsu (exe berekstensi .pdf, DOCX bermakro)","Ditolak"],
+    ["SEC-10","Buka /dev-login/admin","404"],
+    ["SEC-11","Buka URL ngawur dan cari stack trace atau path server","Halaman 404 bersih"],
+    ["SEC-12","Cek apakah situs memakai HTTPS","Catat sebagai temuan jika masih HTTP"],
+
+    ["NF-01","Lighthouse di beranda, /articles, login","Performance minimal 70, konsol bersih"],
+    ["NF-02","Beban ringan: npx autocannon -c 20 -d 20 http://IP/","Tanpa 5xx, p95 di bawah 2 detik"],
+    ["NF-03","Mode HP (375px) dan tablet di halaman utama","Tidak ada layout rusak atau scroll horizontal"],
+    ["NF-04","Alur login dan submit naskah di Chrome, Firefox, Edge","Berjalan di semuanya"],
+    ["NF-05","Upload naskah mendekati batas ukuran","Berhasil atau pesan batas jelas, tidak 413/500 mentah"],
+    ["NF-06","Upload naskah, restart aplikasi, unduh lagi","File tetap ada"],
+    ["NF-07","Backup lalu restore ke DB uji","Data kembali utuh"],
+    ["NF-08","Restart server atau container","Situs naik sendiri"],
+    ["NF-09","Kirim ulang verifikasi email dan pengingat reviewer","Email diterima, tautan valid"],
+    ["NF-10","Navigasi form dengan keyboard (Tab)","Form bisa dipakai tanpa mouse"],
+
+    ["E2E-01","Admin menyiapkan 3 reviewer, 1 editor, 1 jurnal aktif","Akun siap dipakai"],
+    ["E2E-02","Author daftar, gabung jurnal, submit naskah","Status Pending"],
+    ["E2E-03","Editor menugaskan 3 reviewer","Status Sedang Ditinjau"],
+    ["E2E-04","Reviewer terima dan submit review (satu minta revisi)","Editor mendapat notifikasi"],
+    ["E2E-05","Editor putuskan Revisi Mayor, author unggah revisi, editor minta review ulang, reviewer submit lagi","Transisi status benar"],
+    ["E2E-06","Editor putuskan Diterima, buat edisi, attach naskah, isi DOI, publikasikan","Edisi terbit"],
+    ["E2E-07","Buka artikel di halaman publik tanpa login dan cek metadata XML","Artikel dan metadata tampil"],
+    ["E2E-08","Admin cek log aktivitas","Seluruh langkah tercatat"]
+  ];
+  var STATUS_LABEL = { belum: "Belum", lolos: "Lolos", gagal: "Gagal", blokir: "Blokir" };
+  var SEVERITIES = ["Kritis", "Tinggi", "Sedang", "Rendah"];
+  var OWNERS = ["Semua", "P1", "P2", "P3", "P4"];
+
+  function secOf(id) { return SECTIONS[id.split("-")[0]]; }
+  function $(id) { return document.getElementById(id); }
+  function el(tag, props, kids) {
+    var n = document.createElement(tag);
+    if (props) for (var k in props) {
+      if (k === "text") n.textContent = props[k];
+      else if (k === "class") n.className = props[k];
+      else if (k.slice(0, 2) === "on") n.addEventListener(k.slice(2), props[k]);
+      else n.setAttribute(k, props[k]);
+    }
+    (kids || []).forEach(function (c) { if (c) n.appendChild(c); });
+    return n;
+  }
+  function fmt(iso) { try { return new Date(iso).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" }); } catch (e) { return ""; } }
+  function safeUrl(u) { return /^https:\/\//i.test(u || "") ? u : ""; }
+
+  // ------------------------------------------------------------------- state
+  var results = {}, findings = [], rows = {};
+  var filter = { owner: "Semua", status: "" };
+  var db = null, readOnly = false;
+  var queues = {};
+
+  function lsGet(k) { try { return localStorage.getItem(k) || ""; } catch (e) { return ""; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+
+  var testerInput = $("tester");
+  testerInput.value = lsGet("simpil-tester");
+  testerInput.addEventListener("input", function () { lsSet("simpil-tester", testerInput.value.trim()); testerInput.classList.remove("need"); });
+
+  function banner(msg, err) { var b = $("banner"); b.textContent = msg; b.className = "banner" + (err ? " err" : ""); b.hidden = !msg; }
+
+  function needTester() {
+    if (testerInput.value.trim()) return false;
+    testerInput.classList.add("need"); testerInput.focus();
+    banner("Isi nama penguji dulu sebelum mencatat hasil.", false);
+    return true;
+  }
+
+  // ------------------------------------------------------------------ writes
+  function enqueue(key, fn) {
+    var p = (queues[key] || Promise.resolve()).then(fn, fn);
+    queues[key] = p.catch(function () {});
+    return p;
+  }
+  function onWriteError(e) {
+    if (e && e.code === "invalid_argument") { readOnly = true; banner("Akun Anda hanya bisa melihat. Minta pemilik form memberi akses Contributor atau Editor.", true); }
+    else if (e && e.code === "quota_exceeded") banner("Penyimpanan penuh. Hubungi pemilik form.", true);
+    else banner("Gagal menyimpan. Coba lagi sebentar lagi.", true);
+  }
+  function save(id, patch) {
+    if (!db || needTester()) return;
+    banner("", false);
+    var base = results[id] || { status: "belum" };
+    var next = Object.assign({}, base, patch, { tester: testerInput.value.trim(), updatedAt: new Date().toISOString() });
+    results[id] = next; applyRow(id); renderSummary();
+    enqueue("r/" + id, function () { return db.collection("results").doc(id).set(next); }).catch(onWriteError);
+  }
+
+  // ---------------------------------------------------------------- list DOM
+  function buildRow(c) {
+    var id = c[0], r = {};
+    var segBtns = Object.keys(STATUS_LABEL).map(function (v) {
+      return el("button", { type: "button", "data-v": v, "aria-pressed": "false", text: STATUS_LABEL[v], onclick: function () {
+        save(id, { status: v });
+        if (v === "gagal" || v === "blokir") r.detail.hidden = false;
+      } });
+    });
+    r.seg = el("div", { class: "seg", role: "group", "aria-label": "Hasil " + id }, segBtns);
+    r.meta = el("div", { class: "meta" });
+    r.toggle = el("button", { type: "button", class: "link", text: "Catatan dan bukti", onclick: function () { r.detail.hidden = !r.detail.hidden; } });
+    r.actual = el("textarea", { id: "a-" + id, rows: 3, maxlength: 1500, placeholder: "Apa yang sebenarnya terjadi? Untuk kasus gagal, tulis langkah dan pesan error." });
+    r.sev = el("select", { id: "s-" + id }, [el("option", { value: "", text: "Pilih" })].concat(SEVERITIES.map(function (s) { return el("option", { value: s, text: s }); })));
+    r.url = el("input", { id: "u-" + id, type: "url", placeholder: "https://... (tautan screenshot, Drive, dsb.)", maxlength: 300 });
+    r.fixed = el("input", { id: "x-" + id, type: "checkbox" });
+    [["actual", "actual"], ["url", "evidence"]].forEach(function (p) {
+      r[p[0]].addEventListener("change", function () { var o = {}; o[p[1]] = r[p[0]].value.trim(); save(id, o); });
+    });
+    r.sev.addEventListener("change", function () { save(id, { severity: r.sev.value }); });
+    r.fixed.addEventListener("change", function () { save(id, { fixed: r.fixed.checked }); });
+    r.evid = el("p", { class: "hint evid" });
+    r.detail = el("div", { class: "detail", hidden: "" }, [
+      el("label", { class: "full", for: "a-" + id }, [el("span", { text: "Hasil aktual" }), r.actual]),
+      el("label", { for: "s-" + id }, [el("span", { text: "Tingkat keparahan (jika gagal)" }), r.sev]),
+      el("label", { for: "u-" + id }, [el("span", { text: "Tautan bukti" }), r.url]),
+      el("label", { class: "check full", for: "x-" + id }, [r.fixed, el("span", { text: "Sudah diperbaiki dan diuji ulang (diisi tim developer)" })]),
+      el("div", { class: "full" }, [r.evid])
+    ]);
+    r.node = el("article", { class: "case", "data-s": "belum", id: "c-" + id }, [
+      el("div", { class: "case-head" }, [
+        el("div", { class: "txt" }, [el("span", { class: "id", text: id }), el("p", { class: "sc", text: c[1] }), el("p", { class: "ex", text: "Diharapkan: " + c[2] })]),
+        r.seg
+      ]),
+      r.meta, r.detail
+    ]);
+    r.hidden = false;
+    return r;
+  }
+
+  function applyRow(id) {
+    var r = rows[id]; if (!r) return;
+    var d = results[id] || {}, s = d.status || "belum";
+    r.node.setAttribute("data-s", s);
+    Array.prototype.forEach.call(r.seg.children, function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-v") === s)); });
+    function setVal(inp, v) { if (document.activeElement !== inp && inp.value !== (v || "")) inp.value = v || ""; }
+    setVal(r.actual, d.actual); setVal(r.url, d.evidence);
+    r.sev.value = d.severity || ""; r.fixed.checked = !!d.fixed;
+    r.meta.textContent = "";
+    if (d.tester) r.meta.appendChild(el("span", { text: "Oleh " + d.tester + (d.updatedAt ? " · " + fmt(d.updatedAt) : "") }));
+    if (s === "gagal" && d.severity) r.meta.appendChild(el("span", { class: "chip", text: d.severity }));
+    if (s === "gagal") r.meta.appendChild(el("span", d.fixed ? { class: "fixed", text: "Sudah diperbaiki" } : { class: "chip", text: "Belum diperbaiki" }));
+    if (d.actual && r.detail.hidden) r.meta.appendChild(el("span", { text: "Ada catatan" }));
+    r.meta.appendChild(r.toggle);
+    r.evid.textContent = "";
+    var link = safeUrl(d.evidence);
+    if (link) r.evid.appendChild(el("a", { href: link, target: "_blank", rel: "noopener", text: "Buka bukti: " + link }));
+    else if (d.evidence) r.evid.textContent = "Bukti harus berupa tautan https://";
+    var secOwner = secOf(id).owner;
+    var ok = (filter.owner === "Semua" || secOwner === filter.owner)
+      && (!filter.status || (filter.status === "gagal-open" ? (s === "gagal" && !d.fixed) : s === filter.status));
+    r.node.hidden = !ok;
+  }
+
+  function buildList() {
+    var host = $("list"); host.textContent = "";
+    var order = Object.keys(SECTIONS);
+    order.forEach(function (key) {
+      var cs = CASES.filter(function (c) { return c[0].split("-")[0] === key; });
+      var wrap = el("div", { class: "section", "data-sec": key }, [
+        el("header", null, [el("h2", { text: SECTIONS[key].label }), el("span", { class: "muted", text: "Penguji: " + SECTIONS[key].owner + " · " + cs.length + " kasus" })])
+      ]);
+      cs.forEach(function (c) { rows[c[0]] = buildRow(c); wrap.appendChild(rows[c[0]].node); });
+      host.appendChild(wrap);
+    });
+  }
+
+  function applyAll() {
+    CASES.forEach(function (c) { applyRow(c[0]); });
+    Array.prototype.forEach.call($("list").children, function (w) {
+      var any = Array.prototype.some.call(w.querySelectorAll(".case"), function (n) { return !n.hidden; });
+      w.hidden = !any;
+    });
+    var shown = Array.prototype.some.call($("list").children, function (w) { return !w.hidden; });
+    var e = $("emptyMsg");
+    if (!shown && !e) $("list").appendChild(el("div", { id: "emptyMsg", class: "empty", text: "Tidak ada kasus dengan filter ini." }));
+    else if (shown && e) e.remove();
+  }
+
+  // ----------------------------------------------------------------- summary
+  function count(pred) { return CASES.filter(function (c) { return pred(c[0], results[c[0]] || {}); }).length; }
+  function renderSummary() {
+    var total = CASES.length;
+    var p = count(function (i, d) { return d.status === "lolos"; });
+    var f = count(function (i, d) { return d.status === "gagal"; });
+    var b = count(function (i, d) { return d.status === "blokir"; });
+    var todo = total - p - f - b;
+    var open = count(function (i, d) { return d.status === "gagal" && !d.fixed; });
+    var tiles = [
+      ["", Math.round(((p + f + b) / total) * 100) + "%", "Selesai diuji (" + (p + f + b) + "/" + total + ")", ""],
+      ["pass", p, "Lolos", "lolos"], ["fail", f, "Gagal", "gagal"],
+      ["fail", open, "Gagal, belum diperbaiki", "gagal-open"], ["block", b, "Terblokir", "blokir"], ["", todo, "Belum diuji", "belum"]
+    ];
+    var host = $("tiles"); host.textContent = "";
+    tiles.forEach(function (t) {
+      var btn = el("button", { type: "button", class: "tile " + t[0], "aria-pressed": String(!!t[3] && filter.status === t[3]) }, [
+        el("span", { class: "n", text: String(t[1]) }), el("span", { class: "l", text: t[2] })
+      ]);
+      if (t[3]) btn.addEventListener("click", function () { filter.status = filter.status === t[3] ? "" : t[3]; $("fStatus").value = filter.status; renderSummary(); applyAll(); });
+      else btn.disabled = true;
+      host.appendChild(btn);
+    });
+
+    var prog = $("prog"); prog.textContent = "";
+    ["Bagian", "Penguji", "Progres", "Selesai"].forEach(function (h) { prog.appendChild(el("span", { class: "head", text: h })); });
+    Object.keys(SECTIONS).forEach(function (key) {
+      var cs = CASES.filter(function (c) { return c[0].split("-")[0] === key; });
+      var cp = 0, cf = 0, cb = 0;
+      cs.forEach(function (c) { var s = (results[c[0]] || {}).status; if (s === "lolos") cp++; else if (s === "gagal") cf++; else if (s === "blokir") cb++; });
+      var n = cs.length;
+      prog.appendChild(el("span", { text: SECTIONS[key].label }));
+      prog.appendChild(el("span", { class: "muted", text: SECTIONS[key].owner }));
+      prog.appendChild(el("div", { class: "bar", role: "img", "aria-label": cp + " lolos, " + cf + " gagal, " + cb + " terblokir dari " + n }, [
+        el("i", { class: "p", style: "width:" + (cp / n * 100) + "%" }), el("i", { class: "f", style: "width:" + (cf / n * 100) + "%" }), el("i", { class: "b", style: "width:" + (cb / n * 100) + "%" })
+      ]));
+      prog.appendChild(el("span", { class: "num", text: (cp + cf + cb) + "/" + n }));
+    });
+
+    var sev = $("sev"); sev.textContent = "";
+    sev.appendChild(el("span", { class: "muted", text: "Gagal menurut keparahan:" }));
+    SEVERITIES.concat(["Belum dinilai"]).forEach(function (s) {
+      var k = count(function (i, d) { return d.status === "gagal" && (s === "Belum dinilai" ? !d.severity : d.severity === s); });
+      sev.appendChild(el("span", { class: "chip", text: s + ": " + k }));
+    });
+    var fo = findings.filter(function (x) { return !x.fixed; }).length;
+    sev.appendChild(el("span", { class: "chip", text: "Temuan tambahan terbuka: " + fo }));
+  }
+
+  // ----------------------------------------------------------------- filters
+  function buildToolbar() {
+    var host = $("ownerChips"); host.textContent = "";
+    host.appendChild(el("span", { class: "muted", text: "Penguji:" }));
+    OWNERS.forEach(function (o) {
+      var b = el("button", { type: "button", class: "chip" + (filter.owner === o ? " on" : ""), text: o === "Semua" ? "Semua" : o, onclick: function () { filter.owner = o; buildToolbar(); applyAll(); } });
+      host.appendChild(b);
+    });
+    var me = lsGet("simpil-owner");
+  }
+  $("fStatus").addEventListener("change", function (e) { filter.status = e.target.value; renderSummary(); applyAll(); });
+
+  // ---------------------------------------------------------------- findings
+  function renderFindings() {
+    var host = $("findings"); host.textContent = "";
+    if (!findings.length) { host.appendChild(el("div", { class: "empty", text: "Belum ada temuan tambahan." })); return; }
+    findings.forEach(function (f) {
+      var cb = el("input", { type: "checkbox", id: "fx-" + f.id });
+      cb.checked = !!f.fixed;
+      cb.addEventListener("change", function () {
+        if (!db) return;
+        enqueue("f/" + f.id, function () { return db.collection("findings").doc(f.id).update({ fixed: cb.checked }); }).catch(onWriteError);
+      });
+      host.appendChild(el("div", { class: "finding" }, [
+        el("div", { class: "row" }, [
+          el("span", { class: "chip", text: f.severity || "Sedang" }),
+          el("span", { class: "t", text: f.title || "" }),
+          el("label", { class: "check", for: "fx-" + f.id, style: "margin-left:auto;display:flex;gap:6px;align-items:center;font-size:.85rem" }, [cb, el("span", { text: "Sudah diperbaiki" })])
+        ]),
+        f.url ? el("p", { class: "hint", text: "Halaman: " + f.url }) : null,
+        el("p", { class: "s", text: f.steps || "" }),
+        el("p", { class: "hint", text: (f.tester || "") + (f.createdAt ? " · " + fmt(f.createdAt) : "") })
+      ]));
+    });
+  }
+  $("ff").addEventListener("submit", function (e) {
+    e.preventDefault();
+    if (!db || needTester()) return;
+    var data = { title: $("fTitle").value.trim(), severity: $("fSev").value, url: $("fUrl").value.trim(), steps: $("fSteps").value.trim(),
+      tester: testerInput.value.trim(), createdAt: new Date().toISOString(), fixed: false };
+    if (!data.title || !data.steps) return;
+    db.collection("findings").add(data).then(function () { $("ff").reset(); banner("", false); }).catch(onWriteError);
+  });
+
+  // -------------------------------------------------------------------- boot
+  buildList(); buildToolbar(); renderSummary(); applyAll(); renderFindings();
+
+  var loadTimer = setTimeout(function () { banner("Data bersama belum bisa dijangkau. Periksa koneksi atau muat ulang halaman.", false); }, 10000);
+  function loaded() { clearTimeout(loadTimer); if ($("banner").textContent.indexOf("belum bisa dijangkau") > -1) banner("", false); }
+
+  (window.claude && window.claude.use ? window.claude.use("db") : Promise.resolve(null)).then(function (d) {
+    if (!d) { clearTimeout(loadTimer); banner("Penyimpanan bersama tidak tersedia. Pastikan Anda sudah masuk dan membuka form lewat tautan yang dibagikan.", true); return; }
+    db = d;
+    d.collection("results").onSnapshot(function (snap) {
+      var m = {};
+      snap.docs.forEach(function (x) { m[x.id] = x.data(); });
+      results = m; loaded(); renderSummary(); applyAll();
+    }, function () { banner("Gagal memuat hasil uji.", true); });
+    d.collection("findings").orderBy("createdAt", "desc").onSnapshot(function (snap) {
+      findings = snap.docs.map(function (x) { return Object.assign({ id: x.id }, x.data()); });
+      renderFindings(); renderSummary();
+    }, function () {});
+  });
+})();
+</script>

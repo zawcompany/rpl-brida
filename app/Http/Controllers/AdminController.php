@@ -9,7 +9,9 @@ use App\Http\Requests\Admin\UpdateUserRequest;
 use App\Models\User;
 use App\Services\AdminService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 /**
@@ -22,9 +24,7 @@ class AdminController extends Controller
 
     private const FILTER_KEYS = ['search', 'role', 'per_page'];
 
-    public function __construct(private readonly AdminService $adminService)
-    {
-    }
+    public function __construct(private readonly AdminService $adminService) {}
 
     // ------------------------------------------------------------------ Dashboard
 
@@ -32,8 +32,59 @@ class AdminController extends Controller
     {
         return view('roles.admin.dashboard', [
             'stats' => $this->adminService->getDashboardStats(),
-            'logs'  => $this->adminService->getRecentLogs(),
+            'logs' => $this->adminService->getRecentLogs(),
         ]);
+    }
+
+    // ------------------------------------------------------------------ Jejak audit & pemberitahuan
+
+    /** Kelompok aksi yang dapat difilter di halaman log aktivitas. */
+    public const LOG_GROUPS = [
+        'auth' => 'Masuk / keluar',
+        'manuscript' => 'Naskah',
+        'review' => 'Review',
+        'issue' => 'Penerbitan',
+        'file' => 'Akses berkas',
+        'user' => 'Pengguna',
+        'profile' => 'Profil',
+        'journal' => 'Jurnal',
+        'complaint' => 'Pengaduan',
+        'privacy' => 'Data pribadi',
+        'announcement' => 'Pemberitahuan',
+    ];
+
+    public function logs(Request $request): View
+    {
+        $search = $request->query('search');
+        $action = $request->query('action');
+        $filters = [
+            'search' => is_string($search) ? $search : null,
+            'action' => is_string($action) && array_key_exists($action, self::LOG_GROUPS) ? $action : null,
+        ];
+
+        return view('roles.admin.logs', [
+            'logs' => $this->adminService->paginateLogs($filters),
+            'filters' => $filters,
+            'groups' => self::LOG_GROUPS,
+        ]);
+    }
+
+    public function announcement(): View
+    {
+        return view('roles.admin.announcement', ['audiences' => ['all' => 'Semua pengguna aktif'] + User::ROLE_LABELS]);
+    }
+
+    public function sendAnnouncement(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'audience' => ['required', Rule::in(array_merge(['all'], array_keys(User::ROLE_LABELS)))],
+            'title' => ['required', 'string', 'max:120'],
+            'message' => ['required', 'string', 'max:2000'],
+        ]);
+
+        $count = $this->adminService->announce($data['audience'], $data['title'], $data['message']);
+
+        return back()->with('success', "Pemberitahuan dikirim ke {$count} pengguna.");
     }
 
     // ------------------------------------------------------------------ Kelola Pengguna
@@ -83,8 +134,8 @@ class AdminController extends Controller
         $password = $this->adminService->resetPassword($user, $request->user());
 
         return response()->json([
-            'success'  => true,
-            'message'  => 'Password berhasil direset. Sampaikan password sementara ini kepada pengguna.',
+            'success' => true,
+            'message' => 'Password berhasil direset. Sampaikan password sementara ini kepada pengguna.',
             'password' => $password,
         ]);
     }
@@ -102,7 +153,7 @@ class AdminController extends Controller
                 'roleOptions' => User::ROLE_LABELS,
                 'initialRole' => '',
                 'permissions' => AdminService::PERMISSIONS,
-                'counts'      => $this->adminService->getDashboardStats()['roles'],
+                'counts' => $this->adminService->getDashboardStats()['roles'],
             ]
         );
     }
@@ -120,14 +171,14 @@ class AdminController extends Controller
     private function userPayload(User $user): array
     {
         return [
-            'id'          => $user->id,
-            'name'        => $user->name,
-            'email'       => $user->email,
-            'role'        => $user->role,
-            'role_label'  => $user->role_label,
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'role' => $user->role,
+            'role_label' => $user->role_label,
             'institution' => $user->institution,
-            'phone'       => $user->phone,
-            'is_active'   => $user->is_active,
+            'phone' => $user->phone,
+            'is_active' => $user->is_active,
         ];
     }
 }

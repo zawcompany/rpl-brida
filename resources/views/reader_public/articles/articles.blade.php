@@ -58,6 +58,7 @@
                 <dd class="mt-0.5 text-gray-800">
                     <a href="{{ route('journals.show', $article->journal) }}" class="text-red-600 hover:underline">{{ $article->journal->name }}</a>
                     @if ($article->journal->e_issn)<span class="text-gray-500">· e-ISSN {{ $article->journal->e_issn }}</span>@endif
+                    @if ($article->journal->accreditation_label)<span class="block text-xs text-gray-500">{{ $article->journal->accreditation_label }}</span>@endif
                 </dd>
             </div>
         @endif

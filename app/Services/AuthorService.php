@@ -2,17 +2,18 @@
 
 namespace App\Services;
 
+use App\Models\ActivityLog;
 use App\Models\Journal;
 use App\Models\Manuscript;
 use App\Models\ResearchField;
 use App\Models\User;
+use App\Services\Files\ManuscriptFileStore;
 use DomainException;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use App\Services\Files\ManuscriptFileStore;
 
 /**
  * AuthorService — seluruh logika bisnis sisi author:
@@ -29,8 +30,7 @@ class AuthorService
     public function __construct(
         private readonly ManuscriptFileStore $files,
         private readonly NotificationService $notifier,
-    ) {
-    }
+    ) {}
 
     // -------------------------------------------------------------------------
     // Dashboard
@@ -86,30 +86,31 @@ class AuthorService
      * Ajukan naskah baru: simpan berkas, catat metadata, status awal 'pending'
      * (langsung masuk ke antrean "Naskah Baru" editor).
      *
-     * @param array{journal_id: int, title: string, research_field_id: int, abstract: string, keywords: string, co_authors?: array} $data
+     * @param  array{journal_id: int, title: string, research_field_id: int, abstract: string, keywords: string, co_authors?: array}  $data
      */
     public function submit(User $author, array $data, UploadedFile $file): Manuscript
     {
         $path = $this->files->put($file, "manuscripts/{$author->id}");
 
         $manuscript = $author->manuscripts()->create([
-            'journal_id'         => $data['journal_id'],
-            'title'              => $data['title'],
-            'research_field_id'  => $data['research_field_id'],
-            'abstract'           => $data['abstract'],
-            'keywords'           => $data['keywords'],
-            'co_authors'         => array_values($data['co_authors'] ?? []) ?: null,
-            'file_path'          => $path,
+            'journal_id' => $data['journal_id'],
+            'title' => $data['title'],
+            'research_field_id' => $data['research_field_id'],
+            'abstract' => $data['abstract'],
+            'keywords' => $data['keywords'],
+            'co_authors' => array_values($data['co_authors'] ?? []) ?: null,
+            'file_path' => $path,
             'file_original_name' => $file->getClientOriginalName(),
-            'status'             => 'pending',
-            'submitted_at'       => now(),
+            'status' => 'pending',
+            'submitted_at' => now(),
             // Lisensi jurnal dicatat saat pengajuan agar tidak berubah diam-diam bila jurnal mengganti lisensinya.
-            'license'            => Journal::find($data['journal_id'])?->license ?? Journal::DEFAULT_LICENSE,
+            'license' => Journal::find($data['journal_id'])?->license ?? Journal::DEFAULT_LICENSE,
             'declarations_accepted_at' => now(),
-            'conflict_of_interest'     => ($data['conflict_of_interest'] ?? 'none') === 'declared',
-            'conflict_note'            => ($data['conflict_of_interest'] ?? 'none') === 'declared' ? ($data['conflict_note'] ?? null) : null,
+            'conflict_of_interest' => ($data['conflict_of_interest'] ?? 'none') === 'declared',
+            'conflict_note' => ($data['conflict_of_interest'] ?? 'none') === 'declared' ? ($data['conflict_note'] ?? null) : null,
         ]);
 
+        ActivityLog::record('manuscript.submitted', "Naskah \"{$manuscript->title}\" diajukan oleh {$author->name}", $author->id);
         $this->notifier->manuscriptSubmitted($manuscript);
 
         return $manuscript;
@@ -175,13 +176,13 @@ class AuthorService
     public function buildTimeline(Manuscript $manuscript): array
     {
         $stage = match ($manuscript->status) {
-            'pending', 'pemeriksaan_awal'  => 0,
-            'ditinjau'                     => 1,
-            'revisi'                       => 2,
+            'pending', 'pemeriksaan_awal' => 0,
+            'ditinjau' => 1,
+            'revisi' => 2,
             'menunggu_keputusan', 'ditolak' => 3,
-            'disetujui'                    => 4,
-            'diterbitkan'                  => 5,
-            default                        => 0,
+            'disetujui' => 4,
+            'diterbitkan' => 5,
+            default => 0,
         };
         $rejected = $manuscript->status === 'ditolak';
         $hadRevision = $manuscript->revision_file_path !== null || $manuscript->status === 'revisi';
@@ -197,12 +198,12 @@ class AuthorService
 
         foreach ($steps as $i => &$step) {
             $step['state'] = match (true) {
-                $rejected && $i === 3         => 'rejected',
-                $rejected && $i === 4         => 'skipped',
+                $rejected && $i === 3 => 'rejected',
+                $rejected && $i === 4 => 'skipped',
                 $i === 2 && $i < $stage && ! $hadRevision => 'skipped',
-                $i < $stage                   => 'done',
-                $i === $stage                 => 'current',
-                default                       => 'upcoming',
+                $i < $stage => 'done',
+                $i === $stage => 'current',
+                default => 'upcoming',
             };
         }
 
@@ -228,10 +229,10 @@ class AuthorService
             ->get()
             ->values()
             ->map(fn ($review, int $i) => [
-                'label'                => 'Reviewer ' . ($i + 1),
-                'recommendation'       => $review->recommendation_label,
+                'label' => 'Reviewer '.($i + 1),
+                'recommendation' => $review->recommendation_label,
                 'recommendation_class' => $review->recommendation_badge_class,
-                'comments'             => $review->comments ?: 'Tanpa catatan.',
+                'comments' => $review->comments ?: 'Tanpa catatan.',
             ])->all();
     }
 
@@ -252,11 +253,11 @@ class AuthorService
 
         try {
             $manuscript->update([
-                'revision_file_path'     => $path,
+                'revision_file_path' => $path,
                 'revision_original_name' => $file->getClientOriginalName(),
-                'author_response'        => $response,
-                'revision_submitted_at'  => now(),
-                'status'                 => 'menunggu_keputusan',
+                'author_response' => $response,
+                'revision_submitted_at' => now(),
+                'status' => 'menunggu_keputusan',
             ]);
         } catch (\Throwable $e) {
             $this->files->delete($path);
@@ -264,6 +265,7 @@ class AuthorService
         }
 
         $this->files->delete($oldPath); // ganti revisi lama dari putaran sebelumnya
+        ActivityLog::record('manuscript.revised', "Revisi naskah \"{$manuscript->title}\" diunggah");
         $this->notifier->revisionSubmitted($manuscript);
 
         return $manuscript;

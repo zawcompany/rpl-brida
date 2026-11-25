@@ -56,8 +56,9 @@
 
 {{-- AUDIT LOG TERBARU --}}
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-    <div class="px-5 py-4 border-b border-gray-100">
+    <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-4">
         <h2 class="text-base font-bold text-gray-900">Aktivitas Sistem / Audit Log Terbaru</h2>
+        <a href="{{ route('admin.logs.index') }}" class="text-sm font-semibold text-red-600 hover:underline">Lihat semua →</a>
     </div>
     <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-100">

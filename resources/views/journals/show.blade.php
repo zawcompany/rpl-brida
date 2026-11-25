@@ -33,6 +33,9 @@
                     @if ($journal->field)
                         <span class="rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-700">{{ $journal->field }}</span>
                     @endif
+                    @if ($journal->accreditation_label)
+                        <span class="rounded-full bg-green-50 px-3 py-1 text-xs font-semibold text-green-800">{{ $journal->accreditation_label }}</span>
+                    @endif
                     @unless ($journal->is_active)
                         <span class="rounded-full bg-yellow-100 px-3 py-1 text-xs font-semibold text-yellow-800">Jurnal nonaktif</span>
                     @endunless
@@ -47,7 +50,52 @@
                     <a href="{{ route('journals.metadata', [$journal, 'json']) }}" class="text-red-600 hover:underline">JSON</a>
                 </p>
 
+                @if ($journal->accreditation_label && $journal->accreditation_decree)
+                    <p class="mt-1 text-xs text-gray-400">SK akreditasi: {{ $journal->accreditation_decree }}</p>
+                @endif
             </header>
+
+            @if ($journal->focus_scope || $journal->author_guidelines)
+                <section class="space-y-6">
+                    @if ($journal->focus_scope)
+                        <div>
+                            <h3 class="font-bold text-gray-900">Fokus dan Ruang Lingkup</h3>
+                            <p class="mt-2 whitespace-pre-line leading-relaxed text-gray-600">{{ $journal->focus_scope }}</p>
+                        </div>
+                    @endif
+                    @if ($journal->author_guidelines)
+                        <div>
+                            <h3 class="font-bold text-gray-900">Pedoman Penulis</h3>
+                            <p class="mt-2 whitespace-pre-line leading-relaxed text-gray-600">{{ $journal->author_guidelines }}</p>
+                        </div>
+                    @endif
+                </section>
+            @endif
+
+            <section class="grid grid-cols-1 gap-6 md:grid-cols-2">
+                <div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+                    <h3 class="font-bold text-gray-900">Dewan Editor</h3>
+                    @if ($editors->isNotEmpty())
+                        <ul class="mt-3 space-y-2 text-sm">
+                            @foreach ($editors as $editor)
+                                <li><span class="font-semibold text-gray-800">{{ $editor->name }}</span>@if ($editor->institution)<span class="text-gray-500"> · {{ $editor->institution }}</span>@endif</li>
+                            @endforeach
+                        </ul>
+                    @else
+                        <p class="mt-2 text-sm text-gray-500">Dewan editor belum ditetapkan.</p>
+                    @endif
+                </div>
+                <div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+                    <h3 class="font-bold text-gray-900">Statistik Jurnal</h3>
+                    <dl class="mt-3 grid grid-cols-2 gap-3 text-sm">
+                        <div><dt class="text-gray-500">Naskah masuk</dt><dd class="text-lg font-bold text-gray-900">{{ $stats['submitted'] }}</dd></div>
+                        <div><dt class="text-gray-500">Artikel terbit</dt><dd class="text-lg font-bold text-gray-900">{{ $stats['published'] }}</dd></div>
+                        <div><dt class="text-gray-500">Diterima / ditolak</dt><dd class="text-lg font-bold text-gray-900">{{ $stats['accepted'] }} / {{ $stats['rejected'] }}</dd></div>
+                        <div><dt class="text-gray-500">Tingkat penerimaan</dt><dd class="text-lg font-bold text-gray-900">{{ $stats['acceptance_rate'] !== null ? $stats['acceptance_rate'] . '%' : '—' }}</dd></div>
+                        <div class="col-span-2"><dt class="text-gray-500">Rata-rata waktu sampai keputusan</dt><dd class="text-lg font-bold text-gray-900">{{ $stats['average_decision_days'] !== null ? $stats['average_decision_days'] . ' hari' : '—' }}</dd></div>
+                    </dl>
+                </div>
+            </section>
 
             {{-- Template naskah --}}
             <section class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">

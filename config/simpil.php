@@ -39,8 +39,24 @@ return [
     | contact : alamat surel kontak pelindungan data (opsional, ditampilkan di halaman kebijakan).
     */
     'legal' => [
-        'version' => '2026-11',
+        'version' => '2026-11-25',
         'contact' => env('LEGAL_CONTACT_EMAIL'),
+        // Minta persetujuan ulang saat versi kebijakan berubah atau akun belum pernah menyetujui (UU 27/2022 Pasal 21 ayat (2)).
+        'require_consent' => (bool) env('SIMPIL_REQUIRE_CONSENT', true),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Pengaduan (UU 25/2009 Pasal 36)
+    |--------------------------------------------------------------------------
+    | officer       : penanggung jawab pengelola pengaduan yang diumumkan (ayat (4)).
+    | contact       : surel pengaduan untuk yang tidak memiliki akun.
+    | response_days : batas waktu tindak lanjut sejak pengaduan diterima.
+    */
+    'complaints' => [
+        'officer' => env('COMPLAINT_OFFICER', 'Pengelola Layanan SIMPIL, BRIDA Kota Makassar'),
+        'contact' => env('COMPLAINT_EMAIL', env('LEGAL_CONTACT_EMAIL')),
+        'response_days' => (int) env('COMPLAINT_RESPONSE_DAYS', 14),
     ],
 
     /*
@@ -51,7 +67,7 @@ return [
     | FORCE_HTTPS    : paksa URL https (SRS NF-02) — aktifkan di produksi.
     */
     'trusted_proxies' => env('TRUSTED_PROXIES'),
-    'force_https'     => (bool) env('FORCE_HTTPS', false),
+    'force_https' => (bool) env('FORCE_HTTPS', false),
 
     /*
     |--------------------------------------------------------------------------
@@ -60,8 +76,8 @@ return [
     */
     'upload' => [
         'manuscript_kb' => 10240, // 10 MB — naskah & revisi (SRS NF-01)
-        'final_kb'      => 20480, // 20 MB — PDF final layout
-        'cover_kb'      => 2048,  // 2 MB  — gambar sampul edisi
+        'final_kb' => 20480, // 20 MB — PDF final layout
+        'cover_kb' => 2048,  // 2 MB  — gambar sampul edisi
     ],
 
     /*

@@ -83,6 +83,65 @@
             </div>
         </div>
 
+        {{-- KELOMPOK: LAYANAN & AUDIT --}}
+        <div>
+            <p
+                x-show="sidebarOpen"
+                class="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2"
+            >
+                LAYANAN &amp; AUDIT
+            </p>
+
+            <div class="space-y-1">
+
+                <a
+                    href="{{ route('admin.complaints.index') }}"
+                    class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors {{ request()->routeIs('admin.complaints.*') ? 'bg-red-50 text-red-700 font-medium' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}"
+                    :class="!sidebarOpen && 'justify-center px-0'"
+                    title="Pengaduan"
+                >
+                    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
+                    </svg>
+
+                    <span x-show="sidebarOpen" class="truncate">
+                        Pengaduan
+                    </span>
+                </a>
+
+                <a
+                    href="{{ route('admin.logs.index') }}"
+                    class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors {{ request()->routeIs('admin.logs.*') ? 'bg-red-50 text-red-700 font-medium' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}"
+                    :class="!sidebarOpen && 'justify-center px-0'"
+                    title="Log Aktivitas"
+                >
+                    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a2 2 0 01.707.293l5.414 5.414a2 2 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+
+                    <span x-show="sidebarOpen" class="truncate">
+                        Log Aktivitas
+                    </span>
+                </a>
+
+                <a
+                    href="{{ route('admin.announcement.create') }}"
+                    class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors {{ request()->routeIs('admin.announcement.*') ? 'bg-red-50 text-red-700 font-medium' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}"
+                    :class="!sidebarOpen && 'justify-center px-0'"
+                    title="Kirim Pemberitahuan"
+                >
+                    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/>
+                    </svg>
+
+                    <span x-show="sidebarOpen" class="truncate">
+                        Kirim Pemberitahuan
+                    </span>
+                </a>
+
+            </div>
+        </div>
+
         {{-- KELOMPOK: PENGATURAN --}}
         <div>
             <p
@@ -276,6 +335,21 @@
                     </span>
                 </a>
 
+                <a
+                    href="{{ route('complaints.index') }}"
+                    class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors {{ request()->routeIs('complaints.*') ? 'bg-red-50 text-red-700 font-medium' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}"
+                    :class="!sidebarOpen && 'justify-center px-0'"
+                    title="Pengaduan"
+                >
+                    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
+                    </svg>
+
+                    <span x-show="sidebarOpen" class="truncate">
+                        Pengaduan
+                    </span>
+                </a>
+
             </div>
         </div>
 
@@ -399,6 +473,21 @@
                     </span>
                 </a>
 
+                <a
+                    href="{{ route('complaints.index') }}"
+                    class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors {{ request()->routeIs('complaints.*') ? 'bg-red-50 text-red-700 font-medium' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}"
+                    :class="!sidebarOpen && 'justify-center px-0'"
+                    title="Pengaduan"
+                >
+                    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
+                    </svg>
+
+                    <span x-show="sidebarOpen" class="truncate">
+                        Pengaduan
+                    </span>
+                </a>
+
             </div>
         </div>
 
@@ -460,6 +549,21 @@
 
                     <span x-show="sidebarOpen" class="truncate">
                         Profil Saya
+                    </span>
+                </a>
+
+                <a
+                    href="{{ route('complaints.index') }}"
+                    class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors {{ request()->routeIs('complaints.*') ? 'bg-red-50 text-red-700 font-medium' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}"
+                    :class="!sidebarOpen && 'justify-center px-0'"
+                    title="Pengaduan"
+                >
+                    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
+                    </svg>
+
+                    <span x-show="sidebarOpen" class="truncate">
+                        Pengaduan
                     </span>
                 </a>
 

@@ -2,12 +2,14 @@
 
 namespace App\Services;
 
+use App\Models\Complaint;
 use App\Models\Journal;
 use App\Models\Manuscript;
 use App\Models\Review;
 use App\Models\User;
 use App\Notifications\WorkflowNotification;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -50,16 +52,16 @@ class NotificationService
     public function reviewCompleted(Review $review, bool $updated = false): void
     {
         $manuscript = $review->manuscript;
-        $awaiting   = $manuscript->status === 'menunggu_keputusan';
+        $awaiting = $manuscript->status === 'menunggu_keputusan';
 
         $this->send(
             $this->editorsOf($manuscript),
             'review.completed',
             $updated ? 'Review diperbarui' : 'Review selesai',
             match (true) {
-                $updated  => "Reviewer memperbarui hasil review \"{$manuscript->title}\".",
+                $updated => "Reviewer memperbarui hasil review \"{$manuscript->title}\".",
                 $awaiting => "Semua reviewer \"{$manuscript->title}\" telah selesai dan menunggu keputusan editorial.",
-                default   => "Review \"{$manuscript->title}\" selesai: " . $manuscript->load('currentReviews')->review_progress['label'] . '.',
+                default => "Review \"{$manuscript->title}\" selesai: ".$manuscript->load('currentReviews')->review_progress['label'].'.',
             },
             route($awaiting ? 'editor.decisions.index' : 'editor.reviews.index', absolute: false)
         );
@@ -97,17 +99,17 @@ class NotificationService
     public function editorialDecision(Manuscript $manuscript, ?string $decisionLabel = null, bool $editorRevises = false): void
     {
         [$type, $title, $route] = match ($manuscript->status) {
-            'revisi'    => ['manuscript.revision', 'Naskah perlu revisi', 'author.revisions.index'],
-            'ditolak'   => ['manuscript.rejected', 'Naskah ditolak', 'author.manuscripts.index'],
-            default     => ['manuscript.accepted', 'Naskah disetujui', 'author.manuscripts.index'],
+            'revisi' => ['manuscript.revision', 'Naskah perlu revisi', 'author.revisions.index'],
+            'ditolak' => ['manuscript.rejected', 'Naskah ditolak', 'author.manuscripts.index'],
+            default => ['manuscript.accepted', 'Naskah disetujui', 'author.manuscripts.index'],
         };
 
         $this->send(
             $manuscript->author_id,
             $type,
             $title,
-            "Keputusan editor untuk \"{$manuscript->title}\": " . ($decisionLabel ?? $manuscript->status_label) . '.'
-                . ($editorRevises ? ' Perbaikan minor akan diselesaikan editor; Anda tidak perlu mengunggah ulang naskah.' : ''),
+            "Keputusan editor untuk \"{$manuscript->title}\": ".($decisionLabel ?? $manuscript->status_label).'.'
+                .($editorRevises ? ' Perbaikan minor akan diselesaikan editor; Anda tidak perlu mengunggah ulang naskah.' : ''),
             route($route, absolute: false)
         );
     }
@@ -134,6 +136,59 @@ class NotificationService
         );
     }
 
+    /** Masa berlaku akreditasi tinggal ≤ 6 bulan: admin dan editor jurnal diminta mengajukan akreditasi ulang. */
+    public function accreditationExpiring(Journal $journal): void
+    {
+        $editors = $journal->membersAs(Journal::EDITOR)->where('users.is_active', true)->get();
+
+        $this->send(
+            $this->admins()->merge($editors)->unique('id'),
+            'journal.accreditation_expiring',
+            'Akreditasi jurnal segera berakhir',
+            "Akreditasi {$journal->name} berlaku sampai {$journal->accreditation_valid_until->format('d M Y')}. Ajukan akreditasi ulang paling lambat 6 bulan sebelumnya.",
+            route('journals.show', $journal, absolute: false)
+        );
+    }
+
+    /** Pengaduan baru masuk ke petugas pengelola pengaduan (admin). */
+    public function complaintSubmitted(Complaint $complaint): void
+    {
+        $this->send(
+            $this->admins(),
+            'complaint.submitted',
+            'Pengaduan baru',
+            "{$complaint->ticket}: {$complaint->subject}",
+            route('admin.complaints.show', $complaint, absolute: false)
+        );
+    }
+
+    /** Tanggapan atau perubahan status pengaduan dikirim ke pengadu. */
+    public function complaintUpdated(Complaint $complaint): void
+    {
+        if (! $complaint->user_id) {
+            return;
+        }
+
+        $this->send(
+            $complaint->user_id,
+            'complaint.updated',
+            'Pengaduan ditanggapi',
+            "{$complaint->ticket} kini berstatus \"{$complaint->status_label}\".",
+            route('complaints.show', $complaint, absolute: false)
+        );
+    }
+
+    /**
+     * Pemberitahuan dari admin ke banyak pengguna sekaligus, mis. pemberitahuan kegagalan pelindungan data
+     * (UU 27/2022 Pasal 46) atau pengumuman perubahan kebijakan.
+     *
+     * @param  iterable<User>  $recipients
+     */
+    public function announce(iterable $recipients, string $title, string $message): void
+    {
+        $this->send($recipients, 'announcement', $title, $message, route('notifications.index', absolute: false));
+    }
+
     // -------------------------------------------------------------------------
     // Daftar notifikasi pengguna
     // -------------------------------------------------------------------------
@@ -150,7 +205,7 @@ class NotificationService
         return $user->unreadNotifications()->count();
     }
 
-    /** @throws \Illuminate\Database\Eloquent\ModelNotFoundException bila bukan milik user */
+    /** @throws ModelNotFoundException bila bukan milik user */
     public function findFor(User $user, string $id): DatabaseNotification
     {
         return $user->notifications()->findOrFail($id);
@@ -186,14 +241,20 @@ class NotificationService
     {
         $recipients = match (true) {
             $to instanceof User => collect([$to]),
-            is_int($to)         => User::whereKey($to)->get(),
-            default             => collect($to),
+            is_int($to) => User::whereKey($to)->get(),
+            default => collect($to),
         };
 
         $recipients->each(fn (User $u) => $u->notify(new WorkflowNotification($type, $title, $message, $url)));
     }
 
     /** Editor aktif pada jurnal naskah ini; editor jurnal lain tidak ikut diberi tahu. */
+    /** @return Collection<int, User> */
+    private function admins(): Collection
+    {
+        return User::where('role', 'Administrator')->where('is_active', true)->get();
+    }
+
     private function editorsOf(Manuscript $manuscript): Collection
     {
         return User::where('role', 'Editor')

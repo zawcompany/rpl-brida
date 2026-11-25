@@ -6,6 +6,7 @@ use App\Http\Requests\Profile\ChangePasswordRequest;
 use App\Http\Requests\Profile\UpdateProfileRequest;
 use App\Services\ProfileService;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -16,19 +17,49 @@ use Illuminate\View\View;
  */
 class ProfileController extends Controller
 {
-    public function __construct(private readonly ProfileService $profiles)
-    {
-    }
+    public function __construct(private readonly ProfileService $profiles) {}
 
     public function show(Request $request): View
     {
         $user = $request->user();
 
         return view('profile.show', [
-            'user'      => $user->load('researchFields'),
-            'summary'   => $this->profiles->summaryFor($user),
+            'user' => $user->load('researchFields'),
+            'summary' => $this->profiles->summaryFor($user),
             'expertise' => $this->profiles->expertiseOptions($user),
+            'activity' => $this->profiles->activityOf($user),
         ]);
+    }
+
+    // ------------------------------------------------------------------ Hak atas data pribadi
+
+    /** Unduh salinan data pribadi (UU 27/2022 Pasal 7). */
+    public function exportData(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        return response()->json($this->profiles->exportPersonalData($user), 200, [
+            'Content-Disposition' => 'attachment; filename="data-pribadi-simpil-'.$user->id.'.json"',
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
+    /** Halaman persetujuan kebijakan versi terbaru. */
+    public function consent(Request $request): View|RedirectResponse
+    {
+        if ($request->user()->consent_version === config('simpil.legal.version')) {
+            return redirect()->route('dashboard');
+        }
+
+        return view('profile.consent', ['user' => $request->user()]);
+    }
+
+    public function acceptConsent(Request $request): RedirectResponse
+    {
+        $request->validate(['consent' => ['accepted']], ['consent.accepted' => 'Centang persetujuan untuk melanjutkan.']);
+
+        $this->profiles->acceptPolicy($request->user());
+
+        return redirect()->intended(route('dashboard'))->with('success', 'Terima kasih, persetujuan Anda telah dicatat.');
     }
 
     public function update(UpdateProfileRequest $request): RedirectResponse

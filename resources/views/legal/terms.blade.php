@@ -50,4 +50,12 @@
     <h2>7. Data pribadi</h2>
     <p>Pengolahan data pribadi diatur dalam <a class="text-red-600 hover:underline" href="{{ route('legal.privacy') }}">Kebijakan Privasi</a>.</p>
 </section>
+
+<section>
+    <h2>8. Pengaduan dan keberatan</h2>
+    <p>Pengguna dapat menyampaikan pengaduan layanan, keberatan atas keputusan editorial, atau permintaan terkait data pribadi melalui menu
+       <strong>Pengaduan</strong> setelah masuk @if ($contact) atau melalui <a class="text-red-600 hover:underline" href="mailto:{{ $contact }}">{{ $contact }}</a>@endif.
+       Pengaduan dikelola oleh {{ config('simpil.complaints.officer') }} dan ditindaklanjuti paling lambat
+       {{ config('simpil.complaints.response_days') }} hari sejak diterima (UU No. 25 Tahun 2009 Pasal 36).</p>
+</section>
 @endsection

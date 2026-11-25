@@ -69,6 +69,43 @@
             <label for="description" class="block text-xs font-semibold text-gray-600 mb-1.5">Deskripsi</label>
             <textarea id="description" name="description" rows="2" maxlength="2000" class="{{ $input }}">{{ old('description', $journal->description) }}</textarea>
         </div>
+        <div class="md:col-span-3">
+            <label for="focus_scope" class="block text-xs font-semibold text-gray-600 mb-1.5">Fokus dan ruang lingkup</label>
+            <textarea id="focus_scope" name="focus_scope" rows="3" maxlength="5000" class="{{ $input }}" placeholder="Topik yang diterima jurnal ini">{{ old('focus_scope', $journal->focus_scope) }}</textarea>
+        </div>
+        <div class="md:col-span-3">
+            <label for="author_guidelines" class="block text-xs font-semibold text-gray-600 mb-1.5">Pedoman penulis</label>
+            <textarea id="author_guidelines" name="author_guidelines" rows="4" maxlength="10000" class="{{ $input }}" placeholder="Ketentuan naskah: panjang, sistematika, gaya sitasi, dan lain-lain">{{ old('author_guidelines', $journal->author_guidelines) }}</textarea>
+        </div>
+
+        <fieldset class="md:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-4 rounded-lg border border-gray-200 p-4">
+            <legend class="px-1 text-xs font-semibold text-gray-600">Akreditasi (Permendiktisaintek 9/2026)</legend>
+            <div>
+                <label for="accreditation_rank" class="block text-xs font-semibold text-gray-600 mb-1.5">Peringkat</label>
+                <select id="accreditation_rank" name="accreditation_rank" class="{{ $input }}">
+                    <option value="">Belum terakreditasi</option>
+                    @foreach (\App\Models\Journal::ACCREDITATION_RANKS as $rank)
+                        <option value="{{ $rank }}" @selected((int) old('accreditation_rank', $journal->accreditation_rank) === $rank)>Peringkat {{ $rank }}</option>
+                    @endforeach
+                </select>
+                @error('accreditation_rank') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
+            </div>
+            <div>
+                <label for="accreditation_decree" class="block text-xs font-semibold text-gray-600 mb-1.5">Nomor SK akreditasi</label>
+                <input id="accreditation_decree" name="accreditation_decree" type="text" maxlength="120" value="{{ old('accreditation_decree', $journal->accreditation_decree) }}" class="{{ $input }}">
+            </div>
+            <div>
+                <label for="accreditation_valid_until" class="block text-xs font-semibold text-gray-600 mb-1.5">Berlaku sampai</label>
+                <input id="accreditation_valid_until" name="accreditation_valid_until" type="date" value="{{ old('accreditation_valid_until', $journal->accreditation_valid_until?->toDateString()) }}" class="{{ $input }}">
+                @error('accreditation_valid_until') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
+            </div>
+            @if ($journal->accreditationExpiresSoon())
+                <p role="alert" class="md:col-span-3 rounded-lg bg-yellow-50 px-3 py-2 text-xs text-yellow-800">
+                    Masa berlaku akreditasi berakhir {{ $journal->accreditation_valid_until->format('d M Y') }}. Ajukan akreditasi ulang paling lambat 6 bulan sebelum tanggal tersebut agar jurnal tidak dinyatakan tidak terakreditasi.
+                </p>
+            @endif
+        </fieldset>
+
         <label class="md:col-span-3 flex items-center gap-2 text-sm text-gray-700">
             <input type="checkbox" name="is_active" value="1" @checked(old('is_active', $journal->is_active)) class="rounded border-gray-300 text-red-600 focus:ring-red-500">
             Jurnal aktif (menerima anggota dan tampil di daftar jurnal)

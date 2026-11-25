@@ -22,9 +22,9 @@ class AdminService
 
     /** Matriks hak akses per role (ditampilkan di menu Role & Hak Akses). */
     public const PERMISSIONS = [
-        'Author'        => ['Mengajukan naskah', 'Melacak status naskah', 'Mengunggah revisi'],
-        'Reviewer'      => ['Menerima/menolak penugasan review', 'Menilai naskah', 'Memberi rekomendasi'],
-        'Editor'        => ['Menugaskan reviewer', 'Keputusan editorial', 'Mengelola edisi & publikasi'],
+        'Author' => ['Mengajukan naskah', 'Melacak status naskah', 'Mengunggah revisi'],
+        'Reviewer' => ['Menerima/menolak penugasan review', 'Menilai naskah', 'Memberi rekomendasi'],
+        'Editor' => ['Menugaskan reviewer', 'Keputusan editorial', 'Mengelola edisi & publikasi'],
         'Administrator' => ['Mengelola pengguna', 'Mengatur role & hak akses', 'Memantau audit log'],
     ];
 
@@ -40,13 +40,51 @@ class AdminService
         $byRole = User::query()->selectRaw('role, count(*) as total')->groupBy('role')->pluck('total', 'role');
 
         return [
-            'total_users'       => (int) $byRole->sum(),
-            'roles'             => collect(User::ROLE_LABELS)
+            'total_users' => (int) $byRole->sum(),
+            'roles' => collect(User::ROLE_LABELS)
                 ->mapWithKeys(fn (string $label, string $role) => [$label => (int) ($byRole[$role] ?? 0)])
                 ->all(),
             'total_manuscripts' => Manuscript::count(),
-            'new_users'         => User::where('created_at', '>=', now()->subDays(30))->count(),
+            'new_users' => User::where('created_at', '>=', now()->subDays(30))->count(),
         ];
+    }
+
+    /**
+     * Seluruh jejak audit (PP 71/2019 Pasal 22), terbaru dulu. Filter: search (deskripsi/nama pelaku), action (awalan, mis. "auth").
+     *
+     * @param  array{search?: string|null, action?: string|null}  $filters
+     */
+    public function paginateLogs(array $filters = []): LengthAwarePaginator
+    {
+        $search = $filters['search'] ?? null;
+        $action = $filters['action'] ?? null;
+
+        return ActivityLog::with('actor')
+            ->when(filled($action), fn (Builder $q) => $q->where('action', 'like', "{$action}.%"))
+            ->when(filled($search), fn (Builder $q) => $q->where(
+                fn (Builder $q) => $q->where('description', 'like', "%{$search}%")
+                    ->orWhereHas('actor', fn (Builder $a) => $a->where('name', 'like', "%{$search}%"))
+            ))
+            ->latest('created_at')->latest('id')
+            ->paginate(25)
+            ->withQueryString();
+    }
+
+    /**
+     * Kirim pemberitahuan ke semua pengguna aktif atau satu peran saja.
+     *
+     * @return int jumlah penerima
+     */
+    public function announce(string $audience, string $title, string $message): int
+    {
+        $recipients = User::where('is_active', true)
+            ->when($audience !== 'all', fn (Builder $q) => $q->where('role', $audience))
+            ->get();
+
+        app(NotificationService::class)->announce($recipients, $title, $message);
+        ActivityLog::record('announcement.sent', "Pemberitahuan \"{$title}\" dikirim ke {$recipients->count()} pengguna");
+
+        return $recipients->count();
     }
 
     /** 5 log aktivitas sistem terbaru. */
@@ -90,13 +128,13 @@ class AdminService
     public function createUser(array $data): User
     {
         return User::create([
-            'name'        => $data['name'],
-            'email'       => $data['email'],
-            'password'    => $data['password'],
-            'role'        => $data['role'],
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'password' => $data['password'],
+            'role' => $data['role'],
             'institution' => $data['institution'] ?? null,
-            'phone'       => $data['phone'] ?? null,
-            'is_active'   => (bool) ($data['is_active'] ?? true),
+            'phone' => $data['phone'] ?? null,
+            'is_active' => (bool) ($data['is_active'] ?? true),
         ]);
     }
 
@@ -113,12 +151,12 @@ class AdminService
         $this->guardAdminChange($user, $actor, $role, $active);
 
         $user->fill([
-            'name'        => $data['name'],
-            'email'       => $data['email'],
-            'role'        => $role,
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'role' => $role,
             'institution' => $data['institution'] ?? null,
-            'phone'       => $data['phone'] ?? null,
-            'is_active'   => $active,
+            'phone' => $data['phone'] ?? null,
+            'is_active' => $active,
         ]);
         if (filled($data['password'] ?? null)) {
             $user->password = $data['password'];
@@ -128,7 +166,7 @@ class AdminService
         $user->save();
 
         if ($changes) {
-            ActivityLog::record('user.updated', "Data pengguna {$user->name} diperbarui (" . implode(', ', $changes) . ')', $actor->id);
+            ActivityLog::record('user.updated', "Data pengguna {$user->name} diperbarui (".implode(', ', $changes).')', $actor->id);
         }
 
         return $user;
@@ -142,7 +180,7 @@ class AdminService
 
         ActivityLog::record(
             'user.status',
-            'Akun ' . $user->name . ($user->is_active ? ' diaktifkan kembali' : ' ditangguhkan (suspend)'),
+            'Akun '.$user->name.($user->is_active ? ' diaktifkan kembali' : ' ditangguhkan (suspend)'),
             $actor->id
         );
 

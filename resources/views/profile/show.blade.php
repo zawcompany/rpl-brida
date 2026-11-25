@@ -143,4 +143,37 @@
         <button type="submit" class="px-5 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 shadow-sm transition-colors">Ubah Password</button>
     </div>
 </form>
+
+{{-- DATA PRIBADI SAYA (UU 27/2022 Pasal 7 & 32) --}}
+<section class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-4">
+    <div class="flex flex-wrap items-start justify-between gap-4">
+        <div>
+            <h2 class="text-base font-bold text-gray-900">Data Pribadi Saya</h2>
+            <p class="text-xs text-gray-500">
+                Unduh salinan data pribadi Anda yang tersimpan di SIMPIL. Untuk meminta penghapusan data atau mengajukan keberatan,
+                gunakan menu <a href="{{ route('complaints.index') }}" class="font-semibold text-red-600 hover:underline">Pengaduan</a>.
+                @if ($user->privacy_consented_at)
+                    Anda menyetujui Kebijakan Privasi versi {{ $user->consent_version }} pada {{ $user->privacy_consented_at->format('d M Y') }}.
+                @endif
+            </p>
+        </div>
+        <a href="{{ route('profile.export') }}" class="px-4 py-2 text-sm font-semibold text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">Unduh Data Saya (JSON)</a>
+    </div>
+
+    <div>
+        <h3 class="text-sm font-semibold text-gray-700 mb-2">Riwayat kegiatan terakhir</h3>
+        @if ($activity->isNotEmpty())
+            <ul class="divide-y divide-gray-100 text-sm">
+                @foreach ($activity as $log)
+                    <li class="py-2 flex flex-wrap justify-between gap-2">
+                        <span class="text-gray-700">{{ $log->description }}</span>
+                        <span class="text-xs text-gray-400 whitespace-nowrap">{{ $log->created_at->format('d M Y H:i') }}</span>
+                    </li>
+                @endforeach
+            </ul>
+        @else
+            <p class="text-sm text-gray-500">Belum ada kegiatan tercatat.</p>
+        @endif
+    </div>
+</section>
 @endsection

@@ -1,10 +1,15 @@
 <?php
 
+use App\Http\Middleware\EnsureAccountActive;
+use App\Http\Middleware\EnsureJournalAccess;
+use App\Http\Middleware\EnsurePolicyConsent;
+use App\Http\Middleware\EnsureRole;
+use App\Http\Middleware\PreventBackHistory;
+use App\Http\Responses\SessionExpiredResponse;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
-use App\Http\Responses\SessionExpiredResponse;
-use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
@@ -16,11 +21,12 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
-            'role' => \App\Http\Middleware\EnsureRole::class,
-            'journal.access' => \App\Http\Middleware\EnsureJournalAccess::class,
-            'no-back' => \App\Http\Middleware\PreventBackHistory::class,
+            'role' => EnsureRole::class,
+            'journal.access' => EnsureJournalAccess::class,
+            'no-back' => PreventBackHistory::class,
         ]);
-        $middleware->appendToGroup('web', \App\Http\Middleware\EnsureAccountActive::class);
+        $middleware->appendToGroup('web', EnsureAccountActive::class);
+        $middleware->appendToGroup('web', EnsurePolicyConsent::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // 419: token CSRF/sesi kedaluwarsa (mis. tab lama dibuka kembali) -> login ulang yang mulus

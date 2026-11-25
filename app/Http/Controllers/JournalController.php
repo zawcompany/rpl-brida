@@ -24,8 +24,7 @@ class JournalController extends Controller
     public function __construct(
         private readonly JournalService $journals,
         private readonly JournalTemplateStore $templates,
-    ) {
-    }
+    ) {}
 
     public function index(Request $request): View
     {
@@ -39,12 +38,14 @@ class JournalController extends Controller
         $user = $request->user();
 
         return view('journals.show', [
-            'journal'   => $journal,
-            'isMember'  => (bool) $user?->isMemberOf($journal),
-            'isAuthor'  => (bool) $user?->isMemberOf($journal, Journal::AUTHOR),
-            'canJoin'   => $user?->role === Journal::AUTHOR,
+            'journal' => $journal,
+            'isMember' => (bool) $user?->isMemberOf($journal),
+            'isAuthor' => (bool) $user?->isMemberOf($journal, Journal::AUTHOR),
+            'canJoin' => $user?->role === Journal::AUTHOR,
             'canManage' => $user && ($user->isAdmin() || in_array($journal->id, $user->journalIds(Journal::EDITOR), true)),
-            'issues'    => Issue::where('journal_id', $journal->id)->published()
+            'editors' => $this->journals->editorialBoard($journal),
+            'stats' => $this->journals->publicStatistics($journal),
+            'issues' => Issue::where('journal_id', $journal->id)->published()
                 ->with('journal')
                 ->orderByDesc('year')->orderByDesc('volume')->orderByDesc('number')->limit(12)->get(),
         ]);

@@ -38,15 +38,25 @@
 <section>
     <h2>5. Penyimpanan dan keamanan</h2>
     <p>Data disimpan pada infrastruktur cloud di wilayah Indonesia (AWS Jakarta, <em>ap-southeast-3</em>), dengan pembatasan akses berbasis peran,
-       @if (config('simpil.force_https')) enkripsi transmisi (HTTPS), @endif pencadangan berkala, dan pencatatan audit. Data akun disimpan selama akun aktif; naskah terbit disimpan permanen sebagai arsip ilmiah.</p>
+       @if (config('simpil.force_https')) enkripsi transmisi (HTTPS), @endif pencadangan berkala, dan pencatatan audit.</p>
+    <p class="mt-2"><strong>Jangka waktu penyimpanan:</strong></p>
+    <ul>
+        <li><strong>Data akun:</strong> selama akun aktif. Setelah akun dinonaktifkan atas permintaan Anda, data akun tidak lagi diproses kecuali yang wajib disimpan menurut peraturan.</li>
+        <li><strong>Artikel terbit dan metadatanya:</strong> disimpan permanen sebagai arsip ilmiah, sekurang-kurangnya 20 tahun sesuai kewajiban simpan hasil riset (UU No. 11 Tahun 2019 Pasal 40).</li>
+        <li><strong>Naskah yang tidak terbit, hasil review, dan riwayat keputusan:</strong> disimpan selama diperlukan untuk akuntabilitas proses editorial dan penanganan keberatan.</li>
+        <li><strong>Log audit:</strong> disimpan untuk keperluan pengawasan, penyelesaian sengketa, dan pemeriksaan (PP No. 71 Tahun 2019 Pasal 22).</li>
+        <li><strong>Cadangan data (backup):</strong> disimpan 14 hari lalu terhapus otomatis.</li>
+    </ul>
 </section>
 
 <section>
     <h2>6. Hak Anda</h2>
-    <p>Anda berhak mengakses dan memperbarui data akun (menu Profil), menarik persetujuan, serta meminta penghapusan atau pembatasan pemrosesan data pribadi,
-       dengan pengecualian data yang wajib disimpan berdasarkan peraturan perundang-undangan atau telah terbit sebagai arsip ilmiah.
-       Permintaan penghapusan akun saat ini diproses oleh administrator SIMPIL
-       @if ($contact) melalui <a class="text-red-600 hover:underline" href="mailto:{{ $contact }}">{{ $contact }}</a>@else melalui kontak resmi BRIDA Kota Makassar @endif.</p>
+    <p>Anda berhak mengakses dan memperbarui data akun serta mengunduh salinan data pribadi Anda (menu Profil Saya), menarik persetujuan,
+       serta meminta penghapusan atau pembatasan pemrosesan data pribadi, dengan pengecualian data yang wajib disimpan berdasarkan
+       peraturan perundang-undangan atau telah terbit sebagai arsip ilmiah.
+       Permintaan penarikan persetujuan, penghapusan, atau keberatan diajukan melalui menu Pengaduan setelah masuk
+       @if ($contact) atau melalui <a class="text-red-600 hover:underline" href="mailto:{{ $contact }}">{{ $contact }}</a>@endif,
+       dan ditindaklanjuti paling lambat {{ config('simpil.complaints.response_days') }} hari.</p>
 </section>
 
 <section>
@@ -57,6 +67,13 @@
 
 <section>
     <h2>8. Perubahan kebijakan</h2>
-    <p>Kebijakan ini dapat diperbarui. Versi yang berlaku tercantum di bagian atas halaman dan dicatat pada persetujuan akun.</p>
+    <p>Kebijakan ini dapat diperbarui. Versi yang berlaku tercantum di bagian atas halaman dan dicatat pada persetujuan akun.
+       Bila kebijakan berubah, pengguna akan diminta membaca dan menyetujui versi terbaru saat masuk ke SIMPIL.</p>
+</section>
+
+<section>
+    <h2>9. Kegagalan pelindungan data</h2>
+    <p>Bila terjadi kegagalan pelindungan data pribadi, BRIDA akan memberi tahu pengguna yang terdampak secara tertulis paling lambat
+       3 × 24 jam, memuat data yang terungkap, waktu dan cara terungkapnya, serta upaya penanganan dan pemulihannya (UU No. 27 Tahun 2022 Pasal 46).</p>
 </section>
 @endsection

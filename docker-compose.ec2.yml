@@ -64,6 +64,17 @@ services:
       app:
         condition: service_started
 
+  # Tugas terjadwal (pengingat akreditasi ulang, dst.) — routes/console.php
+  scheduler:
+    <<: *app
+    logging:
+      <<: *logging
+      options: {awslogs-region: ap-southeast-3, awslogs-group: /simpil/ec2, awslogs-stream: scheduler}
+    command: php artisan schedule:work
+    depends_on:
+      app:
+        condition: service_started
+
   web:
     image: ${ECR_REGISTRY}/simpil-web:${IMAGE_TAG:-latest}
     restart: unless-stopped
