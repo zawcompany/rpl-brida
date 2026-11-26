@@ -20,6 +20,7 @@ class ManuscriptFileController extends Controller
         'original' => ['file_path', 'file_original_name'],
         'revision' => ['revision_file_path', 'revision_original_name'],
         'final' => ['final_file_path', 'final_original_name'],
+        'decision' => ['decision_file_path', 'decision_file_name'],
     ];
 
     public function __construct(private readonly ManuscriptFileStore $files) {}
@@ -27,7 +28,7 @@ class ManuscriptFileController extends Controller
     public function show(Manuscript $manuscript, string $type): StreamedResponse
     {
         abort_unless(isset(self::TYPES[$type]), 404);
-        Gate::authorize('viewFile', $manuscript);
+        Gate::authorize($type === 'decision' ? 'viewDecisionFile' : 'viewFile', $manuscript);
 
         [$pathColumn, $nameColumn] = self::TYPES[$type];
         $path = $manuscript->{$pathColumn};

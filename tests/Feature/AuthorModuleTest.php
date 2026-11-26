@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Journal;
 use App\Models\Manuscript;
 use App\Models\ResearchField;
 use App\Models\Review;
@@ -15,9 +16,10 @@ use Tests\TestCase;
 
 class AuthorModuleTest extends TestCase
 {
-    use RefreshDatabase, MakesDocuments;
+    use MakesDocuments, RefreshDatabase;
 
     private User $author;
+
     private ResearchField $field;
 
     protected function setUp(): void
@@ -32,7 +34,7 @@ class AuthorModuleTest extends TestCase
     private function makeUser(string $role, ?string $email = null): User
     {
         return User::create([
-            'name' => "Tes {$role}", 'email' => $email ?? strtolower($role) . '@t.test',
+            'name' => "Tes {$role}", 'email' => $email ?? strtolower($role).'@t.test',
             'password' => 'password', 'role' => $role,
         ]);
     }
@@ -41,7 +43,7 @@ class AuthorModuleTest extends TestCase
     {
         return Manuscript::create($attrs + [
             'author_id' => ($owner ?? $this->author)->id, 'research_field_id' => $this->field->id,
-            'title' => 'Naskah ' . $status, 'abstract' => 'Abstrak', 'keywords' => 'a, b',
+            'title' => 'Naskah '.$status, 'abstract' => 'Abstrak', 'keywords' => 'a, b',
             'file_path' => 'manuscripts/x.pdf', 'file_original_name' => 'x.pdf',
             'status' => $status, 'submitted_at' => now(),
         ]);
@@ -50,7 +52,7 @@ class AuthorModuleTest extends TestCase
     private function payload(array $override = []): array
     {
         return $override + [
-            'journal_id' => \App\Models\Journal::defaultId(),
+            'journal_id' => Journal::defaultId(),
             'declare_originality' => '1', 'declare_copyright' => '1', 'conflict_of_interest' => 'none',
             'title' => 'Judul Baru', 'research_field_id' => $this->field->id,
             'abstract' => 'Abstrak lengkap.', 'keywords' => 'riset, brida',
@@ -199,7 +201,7 @@ class AuthorModuleTest extends TestCase
             ->get(route('files.manuscript', [$m, 'original']))->assertForbidden();
     }
 
-    // ---------------------------------------------------------------- Hasil Review & Revisi
+    // ---------------------------------------------------------------- Catatan Editor & Revisi
 
     public function test_revision_queue_lists_only_revisi_status(): void
     {
@@ -214,37 +216,42 @@ class AuthorModuleTest extends TestCase
         $this->assertStringContainsString('Perbaiki metode', $res->json('html'));
     }
 
-    public function test_revision_detail_shows_anonymous_reviewer_feedback(): void
+    public function test_author_never_receives_anything_from_reviewer_on_any_page(): void
     {
         $m = $this->makeManuscript('revisi', null, ['editorial_note' => 'Catatan editor', 'decided_at' => now()]);
-        $reviewer = $this->makeUser('Reviewer');
-        Review::create([
-            'manuscript_id' => $m->id, 'reviewer_id' => $reviewer->id, 'assigned_by' => $this->makeUser('Editor')->id, 'status' => 'selesai',
-            'recommendation' => 'revisi_minor', 'comments' => 'Perjelas metodologi', 'completed_at' => now(),
-        ]);
-
-        $res = $this->actingAs($this->author)->getJson(route('author.revisions.detail', $m))->assertOk();
-        $this->assertSame('Perjelas metodologi', $res->json('reviews.0.comments'));
-        $this->assertSame('Reviewer 1', $res->json('reviews.0.label'));
-        $this->assertStringNotContainsString($reviewer->name, $res->getContent());
-
-        $this->actingAs($this->author)
-            ->getJson(route('author.revisions.detail', $this->makeManuscript('ditinjau')))->assertNotFound();
-    }
-
-    public function test_author_never_sees_reviewer_confidential_note(): void
-    {
-        $m = $this->makeManuscript('revisi', null, ['editorial_note' => 'Catatan editor', 'decided_at' => now()]);
-        Review::create([
-            'manuscript_id' => $m->id, 'reviewer_id' => $this->makeUser('Reviewer')->id, 'assigned_by' => $this->makeUser('Editor')->id,
+        $reviewer = $this->makeUser('Reviewer', 'reviewer-rahasia@t.test');
+        $reviewer->update(['name' => 'NAMA-REVIEWER-RAHASIA']);
+        Storage::disk('local')->put('reviews/catatan.pdf', '%PDF-1.4 isi catatan reviewer');
+        $review = Review::create([
+            'manuscript_id' => $m->id, 'reviewer_id' => $reviewer->id, 'assigned_by' => $this->makeUser('Editor')->id,
             'status' => 'selesai', 'recommendation' => 'revisi_mayor', 'completed_at' => now(),
-            'comments' => 'Perjelas metodologi', 'notes_for_editor' => 'RAHASIA-DUGAAN-PLAGIAT',
+            'notes_for_editor' => 'CATATAN-REVIEWER-UNTUK-EDITOR', 'review_file_path' => 'reviews/catatan.pdf', 'review_file_name' => 'catatan.pdf',
         ]);
+        $hidden = ['CATATAN-REVIEWER-UNTUK-EDITOR', 'NAMA-REVIEWER-RAHASIA', 'reviewer-rahasia@t.test', 'notes_for_editor', 'catatan.pdf'];
+        $this->actingAs($this->author);
 
-        $res = $this->actingAs($this->author)->getJson(route('author.revisions.detail', $m))->assertOk();
-        $this->assertSame('Perjelas metodologi', $res->json('reviews.0.comments'));
-        $this->assertStringNotContainsString('RAHASIA-DUGAAN-PLAGIAT', $res->getContent());
-        $this->assertStringNotContainsString('notes_for_editor', $res->getContent());
+        $responses = [
+            $this->get(route('dashboard')),
+            $this->get(route('author.manuscripts.index')),
+            $this->getJson(route('author.manuscripts.index')),
+            $this->getJson(route('author.manuscripts.show', $m)),
+            $this->get(route('author.revisions.index')),
+            $this->getJson(route('author.revisions.index')),
+            $this->getJson(route('author.revisions.detail', $m)),
+            $this->get(route('notifications.index')),
+            $this->get(route('profile.export')),
+        ];
+
+        foreach ($responses as $response) {
+            $response->assertOk();
+            foreach ($hidden as $text) {
+                $this->assertStringNotContainsString($text, $response->getContent());
+            }
+        }
+
+        $this->assertSame('Catatan editor', $this->getJson(route('author.revisions.detail', $m))->json('manuscript.editorial_note'));
+        $this->get(route('files.review', $review))->assertForbidden();
+        $this->getJson(route('author.revisions.detail', $this->makeManuscript('ditinjau')))->assertNotFound();
     }
 
     public function test_upload_revision_moves_manuscript_to_editor_decision_queue(): void

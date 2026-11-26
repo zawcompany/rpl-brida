@@ -1,14 +1,23 @@
 {{--
     Pratinjau PDF + tombol unduh.
-    Props: label, url (ekspresi Alpine, mis. "detail.manuscript.file_url"), preview (tampilkan iframe)
+    Props: label, url (ekspresi Alpine, mis. "detail.manuscript.file_url"), preview (tampilkan iframe),
+           name (ekspresi Alpine berisi nama berkas asli; pratinjau hanya untuk .pdf).
+    Iframe hanya dibuat untuk PDF: browser tidak dapat menampilkan DOCX di iframe dan malah mengunduhnya
+    setiap kali modal dibuka.
 --}}
-@props(['label', 'url', 'preview' => true])
+@props(['label', 'url', 'preview' => true, 'name' => "''"])
 
 <div>
     <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{{ $label }}</p>
     @if ($preview)
-        <div x-show="{{ $url }}" class="border border-gray-200 rounded-xl overflow-hidden bg-gray-100" style="height: 260px;">
-            <iframe :src="{{ $url }}" class="w-full h-full" frameborder="0" title="{{ $label }}"></iframe>
+        <template x-if="{{ $url }} && /\.pdf$/i.test({{ $name }} || '')">
+            <div class="border border-gray-200 rounded-xl overflow-hidden bg-gray-100" style="height: 260px;">
+                <iframe :src="{{ $url }}" class="w-full h-full" frameborder="0" title="{{ $label }}"></iframe>
+            </div>
+        </template>
+        <div x-show="{{ $url }} && !/\.pdf$/i.test({{ $name }} || '')"
+             class="border border-dashed border-gray-300 rounded-xl p-4 text-center text-gray-500 text-sm">
+            Pratinjau hanya tersedia untuk berkas PDF. Gunakan tombol <strong>Unduh Berkas</strong> untuk membacanya.
         </div>
     @endif
     <div x-show="!{{ $url }}" class="border border-dashed border-gray-300 rounded-xl p-5 flex items-center justify-center text-gray-400 text-sm">

@@ -12,40 +12,40 @@ class Review extends Model
     public const ACTIVE_STATUSES = ['ditugaskan', 'diterima'];
 
     public const STATUS_LABELS = [
-        'ditugaskan'       => 'Belum Direspon',
-        'diterima'         => 'Sedang Meninjau',
-        'selesai'          => 'Selesai Review',
+        'ditugaskan' => 'Belum Direspon',
+        'diterima' => 'Sedang Meninjau',
+        'selesai' => 'Selesai Review',
         'ditolak_reviewer' => 'Ditolak Reviewer',
     ];
 
     public const RECOMMENDATION_LABELS = [
-        'diterima'     => 'Diterima',
+        'diterima' => 'Diterima',
         'revisi_minor' => 'Revisi Minor',
         'revisi_mayor' => 'Revisi Mayor',
-        'ditolak'      => 'Ditolak',
+        'ditolak' => 'Ditolak',
     ];
 
     /** Kriteria rubrik penilaian: kolom => label. Semua dinilai dengan LEVELS. */
     public const RUBRIC = [
-        'relevansi_topik'       => 'Relevansi Topik',
+        'relevansi_topik' => 'Relevansi Topik',
         'metodologi_penelitian' => 'Metodologi Penelitian',
-        'kebaruan'              => 'Kebaruan / Orisinalitas',
-        'kualitas_penulisan'    => 'Kualitas Penulisan',
+        'kebaruan' => 'Kebaruan / Orisinalitas',
+        'kualitas_penulisan' => 'Kualitas Penulisan',
     ];
 
     /** Tingkat penilaian => skor numerik (untuk rata-rata). */
     public const LEVELS = [
         'Sangat Baik' => 4,
-        'Baik'        => 3,
-        'Cukup'       => 2,
-        'Kurang'      => 1,
+        'Baik' => 3,
+        'Cukup' => 2,
+        'Kurang' => 1,
     ];
 
     protected $fillable = [
         'manuscript_id',
         'reviewer_id',
         'assigned_by',
-        'comments',
+        'decline_reason',
         'notes_for_editor',
         'recommendation',
         'relevansi_topik',
@@ -63,9 +63,9 @@ class Review extends Model
     ];
 
     protected $casts = [
-        'due_at'        => 'datetime',
-        'completed_at'  => 'datetime',
-        'reminded_at'   => 'datetime',
+        'due_at' => 'datetime',
+        'completed_at' => 'datetime',
+        'reminded_at' => 'datetime',
         'superseded_at' => 'datetime',
     ];
 
@@ -109,10 +109,10 @@ class Review extends Model
     }
 
     /** Boleh diganti: reviewer menolak atau terlambat. */
+    /** Editor boleh mengganti reviewer selama review-nya belum selesai (belum direspon, sedang meninjau, atau menolak). */
     public function isReplaceable(): bool
     {
-        return $this->superseded_at === null
-            && ($this->status === 'ditolak_reviewer' || $this->isOverdue());
+        return $this->superseded_at === null && $this->status !== 'selesai';
     }
 
     /** @return array<string, ?string> kolom rubrik => tingkat penilaian */
@@ -137,11 +137,11 @@ class Review extends Model
     public function getStatusBadgeClassAttribute(): string
     {
         return match ($this->status) {
-            'ditugaskan'       => 'bg-yellow-100 text-yellow-800',
-            'diterima'         => 'bg-blue-100 text-blue-800',
-            'selesai'          => 'bg-green-100 text-green-800',
+            'ditugaskan' => 'bg-yellow-100 text-yellow-800',
+            'diterima' => 'bg-blue-100 text-blue-800',
+            'selesai' => 'bg-green-100 text-green-800',
             'ditolak_reviewer' => 'bg-red-100 text-red-800',
-            default            => 'bg-gray-100 text-gray-700',
+            default => 'bg-gray-100 text-gray-700',
         };
     }
 
@@ -155,11 +155,11 @@ class Review extends Model
     public function getRecommendationBadgeClassAttribute(): string
     {
         return match ($this->recommendation) {
-            'diterima'     => 'bg-green-100 text-green-800',
+            'diterima' => 'bg-green-100 text-green-800',
             'revisi_minor' => 'bg-yellow-100 text-yellow-800',
             'revisi_mayor' => 'bg-orange-100 text-orange-800',
-            'ditolak'      => 'bg-red-100 text-red-800',
-            default        => 'bg-gray-100 text-gray-600',
+            'ditolak' => 'bg-red-100 text-red-800',
+            default => 'bg-gray-100 text-gray-600',
         };
     }
 }

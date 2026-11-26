@@ -7,7 +7,10 @@ use App\Rules\SafeDocument;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-/** Kirim hasil review: rubrik, komentar, rekomendasi, dan lampiran opsional. UpdateReviewRequest memakai aturan yang sama. */
+/**
+ * Kirim hasil review: rubrik, catatan untuk editor, rekomendasi, dan lampiran opsional. UpdateReviewRequest memakai aturan yang sama.
+ * Reviewer hanya berkomunikasi dengan editor, jadi tidak ada lagi komentar yang ditujukan langsung ke penulis.
+ */
 class SubmitReviewRequest extends FormRequest
 {
     /** Hanya reviewer pemilik penugasan (ReviewPolicy). Aturan status ada di ReviewerService. */
@@ -25,29 +28,27 @@ class SubmitReviewRequest extends FormRequest
         )->all();
 
         return $rubric + [
-            'comments'       => ['required', 'string', 'min:10', 'max:5000'],
-            'notes_for_editor' => ['nullable', 'string', 'max:3000'],
+            'notes_for_editor' => ['required', 'string', 'min:10', 'max:5000'],
             'recommendation' => ['required', Rule::in(array_keys(Review::RECOMMENDATION_LABELS))],
-            'review_file'    => ['nullable', 'file', new SafeDocument(['pdf', 'docx']), 'max:' . config('simpil.upload.manuscript_kb')],
+            'review_file' => ['nullable', 'file', new SafeDocument(['pdf', 'docx']), 'max:'.config('simpil.upload.manuscript_kb')],
         ];
     }
 
     public function attributes(): array
     {
         return Review::RUBRIC + [
-            'comments'       => 'komentar reviewer',
             'notes_for_editor' => 'catatan untuk editor',
             'recommendation' => 'rekomendasi',
-            'review_file'    => 'berkas catatan review',
+            'review_file' => 'berkas catatan review',
         ];
     }
 
     public function messages(): array
     {
         return [
-            'required'       => ':attribute wajib diisi.',
-            'in'             => ':attribute tidak valid.',
-            'comments.min'   => 'Komentar reviewer minimal :min karakter agar bermanfaat bagi penulis.',
+            'required' => ':attribute wajib diisi.',
+            'in' => ':attribute tidak valid.',
+            'notes_for_editor.min' => 'Catatan untuk editor minimal :min karakter agar bermanfaat bagi editor.',
             'review_file.max' => 'Ukuran berkas catatan review maksimal 10 MB.',
         ];
     }

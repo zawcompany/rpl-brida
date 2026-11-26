@@ -35,7 +35,7 @@ Route::get('/articles', [PublicController::class, 'index'])->name('reader.index'
 Route::get('/articles/{id}', [PublicController::class, 'article'])->whereNumber('id')->name('reader.article');
 Route::get('/articles/{id}/pdf', [PublicController::class, 'pdf'])->whereNumber('id')->name('articles.pdf');
 Route::get('/download/{id}', [PublicController::class, 'download'])->whereNumber('id')
-    ->middleware('throttle:60,1')->name('articles.download');
+    ->middleware('throttle:60,1,download')->name('articles.download');
 
 Route::get('/archives', [PublicController::class, 'archives'])->name('archives.index');
 Route::get('/archives/{issue}', [PublicController::class, 'issue'])->whereNumber('issue')->name('archives.show');
@@ -49,7 +49,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/jurnal/{journal}/gabung', [JournalController::class, 'leave'])
         ->middleware('role:author')->name('journals.leave');
     Route::get('/jurnal/{journal}/template', [JournalController::class, 'template'])
-        ->middleware('throttle:30,1')->name('journals.template');
+        ->middleware('throttle:30,1,template')->name('journals.template');
     Route::post('/jurnal/{journal}/template', [JournalController::class, 'uploadTemplate'])
         ->name('journals.template.upload');
 });
@@ -61,7 +61,7 @@ Route::get('/etika-publikasi', [LegalController::class, 'show'])->defaults('page
 
 // Ekspor metadata artikel terbit per jurnal (Dublin Core XML / JSON) untuk repositori nasional & pemanen metadata
 Route::get('/jurnal/{journal}/metadata.{format}', [MetadataExportController::class, 'journal'])
-    ->whereIn('format', ['xml', 'json'])->middleware('throttle:30,1')->name('journals.metadata');
+    ->whereIn('format', ['xml', 'json'])->middleware('throttle:30,1,metadata')->name('journals.metadata');
 
 // URL template lama: template kini per jurnal, jadi arahkan ke daftar jurnal.
 Route::redirect('/panduan/template', '/jurnal')->name('guide.template');
@@ -76,13 +76,13 @@ Route::middleware(['guest', 'no-back'])->group(function () {
         ->name('login');
 
     Route::post('/login', [AuthController::class, 'login'])
-        ->middleware('throttle:5,1');
+        ->middleware('throttle:login'); // batas khusus login: lihat AppServiceProvider
 
     Route::get('/register', [AuthController::class, 'showRegister'])
         ->name('register');
 
     Route::post('/register', [AuthController::class, 'register'])
-        ->middleware('throttle:10,1');
+        ->middleware('throttle:10,1,register');
 });
 
 // 3. Dashboard berbasis role
@@ -95,7 +95,7 @@ Route::get('/berkas/{manuscript}/{type}', [
     ManuscriptFileController::class,
     'show',
 ])
-    ->whereIn('type', ['original', 'revision', 'final'])
+    ->whereIn('type', ['original', 'revision', 'final', 'decision'])
     ->middleware('auth')
     ->name('files.manuscript');
 
@@ -119,13 +119,13 @@ Route::middleware('auth')->group(function () {
 
     // Hak atas data pribadi: unduh salinan data dan persetujuan kebijakan versi terbaru (UU 27/2022)
     Route::get('/profil/data-saya', [ProfileController::class, 'exportData'])
-        ->middleware('throttle:6,1')->name('profile.export');
+        ->middleware('throttle:6,1,export')->name('profile.export');
     Route::get('/persetujuan-kebijakan', [ProfileController::class, 'consent'])->name('consent.show');
     Route::post('/persetujuan-kebijakan', [ProfileController::class, 'acceptConsent'])->name('consent.accept');
 
     // Pengaduan dan keberatan (UU 25/2009 Pasal 36)
     Route::get('/pengaduan', [ComplaintController::class, 'index'])->name('complaints.index');
-    Route::post('/pengaduan', [ComplaintController::class, 'store'])->middleware('throttle:10,1')->name('complaints.store');
+    Route::post('/pengaduan', [ComplaintController::class, 'store'])->middleware('throttle:10,1,complaint')->name('complaints.store');
     Route::get('/pengaduan/{complaint}', [ComplaintController::class, 'show'])->whereNumber('complaint')->name('complaints.show');
 
     // Verifikasi email
@@ -133,7 +133,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/email/verifikasi/{id}/{hash}', [ProfileController::class, 'verifyEmail'])
         ->middleware('signed')->name('verification.verify');
     Route::post('/email/verifikasi/kirim-ulang', [ProfileController::class, 'resendVerification'])
-        ->middleware('throttle:6,1')->name('verification.send');
+        ->middleware('throttle:6,1,verify-email')->name('verification.send');
 
     // Notifikasi
     Route::get('/notifikasi', [NotificationController::class, 'index'])->name('notifications.index');
@@ -189,6 +189,11 @@ Route::middleware(['auth', 'role:editor', 'journal.access'])
             EditorController::class,
             'changeReviewer',
         ])->name('reviews.change');
+
+        Route::post('/peninjauan/{manuscript}/batalkan', [
+            EditorController::class,
+            'cancelReview',
+        ])->name('reviews.cancel');
 
         // Keputusan Editorial
         Route::get('/keputusan', [
@@ -252,10 +257,8 @@ Route::middleware(['auth', 'role:editor', 'journal.access'])
             'publish',
         ])->name('issues.publish');
 
-        // Jurnal Saya: template dan reviewer pada jurnal yang dikelola editor
+        // Jurnal Saya: template dan daftar reviewer (hanya-baca; keanggotaan jurnal diatur admin)
         Route::get('/jurnal', [JournalManagementController::class, 'editorIndex'])->name('journals.index');
-        Route::post('/jurnal/{journal}/anggota', [JournalManagementController::class, 'addMember'])->name('journals.members.add');
-        Route::delete('/jurnal/{journal}/anggota/{user}/{role}', [JournalManagementController::class, 'removeMember'])->name('journals.members.remove');
 
         // Direktori Reviewer
         Route::get('/reviewer', [
@@ -386,7 +389,7 @@ Route::middleware(['auth', 'role:admin'])
         Route::put('/pengaduan/{complaint}', [ComplaintController::class, 'adminUpdate'])->whereNumber('complaint')->name('complaints.update');
         Route::get('/log-aktivitas', [AdminController::class, 'logs'])->name('logs.index');
         Route::get('/pemberitahuan', [AdminController::class, 'announcement'])->name('announcement.create');
-        Route::post('/pemberitahuan', [AdminController::class, 'sendAnnouncement'])->middleware('throttle:10,1')->name('announcement.store');
+        Route::post('/pemberitahuan', [AdminController::class, 'sendAnnouncement'])->middleware('throttle:10,1,announce')->name('announcement.store');
 
         // Role & Hak Akses
         Route::get('/role', [

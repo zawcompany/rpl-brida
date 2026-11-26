@@ -43,17 +43,22 @@
         @csrf
         @if ($editingIssue) @method('PUT') @endif
 
-        @if (! $editingIssue && $journals->count() > 1)
-            <div class="sm:col-span-2 lg:col-span-5">
-                <label class="{{ $label }}" for="i-journal">Jurnal</label>
+        {{-- Jurnal selalu terlihat agar jelas edisi ini milik jurnal mana; jurnal tidak dapat dipindah setelah edisi dibuat. --}}
+        <div class="sm:col-span-2 lg:col-span-5">
+            <label class="{{ $label }}" for="i-journal">Jurnal</label>
+            @if (! $editingIssue && $journals->count() > 1)
                 <select id="i-journal" name="journal_id" required class="{{ $input }}">
                     <option value="">— Pilih jurnal —</option>
                     @foreach ($journals as $j)
                         <option value="{{ $j->id }}" @selected(old('journal_id') == $j->id)>{{ $j->name }}</option>
                     @endforeach
                 </select>
-            </div>
-        @endif
+            @else
+                <p id="i-journal" class="text-sm font-medium text-gray-800 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg">
+                    {{ $editingIssue?->journal?->name ?? $journals->first()?->name ?? '—' }}
+                </p>
+            @endif
+        </div>
 
         <div>
             <label class="{{ $label }}" for="i-volume">Volume</label>
@@ -101,6 +106,7 @@
         <table class="min-w-full divide-y divide-gray-100">
             <thead class="bg-gray-50">
                 <tr>
+                    <th class="{{ $th }}">Jurnal</th>
                     <th class="{{ $th }}">Volume</th>
                     <th class="{{ $th }}">Nomor</th>
                     <th class="{{ $th }}">Tahun</th>
@@ -113,6 +119,7 @@
             <tbody class="divide-y divide-gray-50">
                 @forelse ($issues as $issue)
                 <tr class="{{ $activeIssue?->id === $issue->id ? 'bg-red-50/40' : 'hover:bg-gray-50/60' }}">
+                    <td class="px-6 py-3 text-sm text-gray-800 max-w-[200px] truncate" title="{{ $issue->journal?->name }}">{{ $issue->journal?->name ?? '—' }}</td>
                     <td class="px-6 py-3 text-sm text-gray-800">{{ $issue->volume }}</td>
                     <td class="px-6 py-3 text-sm text-gray-800">{{ $issue->number }}</td>
                     <td class="px-6 py-3 text-sm text-gray-800">{{ $issue->year }}</td>
@@ -139,7 +146,7 @@
                     </td>
                 </tr>
                 @empty
-                    @include('roles.editor.partials.empty-row', ['colspan' => 7, 'message' => 'Belum ada edisi. Tambahkan edisi pertama di atas.'])
+                    @include('roles.editor.partials.empty-row', ['colspan' => 8, 'message' => 'Belum ada edisi. Tambahkan edisi pertama di atas.'])
                 @endforelse
             </tbody>
         </table>
@@ -155,9 +162,12 @@
             <h2 class="text-base font-semibold text-gray-800">2. Penetapan Naskah & Layout Final</h2>
             @if ($activeIssue)
                 <p class="text-xs text-gray-400 mt-0.5">
-                    Edisi aktif: <span class="font-medium text-gray-600">{{ $activeIssue->label }}</span>
+                    Edisi aktif: <span class="font-medium text-gray-600">{{ $activeIssue->journal?->name }} · {{ $activeIssue->label }}</span>
                     {{ $activeIssue->title ? '— ' . $activeIssue->title : '' }}
                 </p>
+                @unless ($draft)
+                    <p class="text-xs text-blue-700 mt-1">Edisi ini sudah terbit, sehingga naskahnya tidak dapat dikeluarkan atau diganti lagi. DOI tetap dapat diisi.</p>
+                @endunless
             @endif
         </div>
 

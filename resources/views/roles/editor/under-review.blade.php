@@ -3,7 +3,7 @@
 @section('content')
 <div class="mb-6">
     <h1 class="text-2xl font-bold text-gray-900">Peninjauan Naskah</h1>
-    <p class="text-sm text-gray-500 mt-1">Pantau progres review, kirim pengingat, atau ganti reviewer yang menolak / terlambat.</p>
+    <p class="text-sm text-gray-500 mt-1">Pantau progres review, kirim pengingat, ganti reviewer yang belum selesai, atau batalkan peninjauan.</p>
 </div>
 
 <x-editor.data-table

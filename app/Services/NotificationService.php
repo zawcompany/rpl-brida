@@ -67,6 +67,18 @@ class NotificationService
         );
     }
 
+    /** Editor mengganti reviewer atau membatalkan peninjauan: reviewer tidak perlu melanjutkan penugasan ini. */
+    public function reviewAssignmentCancelled(Review $review): void
+    {
+        $this->send(
+            $review->reviewer_id,
+            'review.cancelled',
+            'Penugasan review dibatalkan',
+            "Editor membatalkan penugasan Anda untuk meninjau \"{$review->manuscript->title}\". Anda tidak perlu melanjutkan review ini.",
+            route('reviewer.manuscripts.index', absolute: false)
+        );
+    }
+
     /** Reviewer menolak penugasan: editor perlu menugaskan reviewer lain. */
     public function reviewDeclined(Review $review): void
     {
@@ -109,7 +121,8 @@ class NotificationService
             $type,
             $title,
             "Keputusan editor untuk \"{$manuscript->title}\": ".($decisionLabel ?? $manuscript->status_label).'.'
-                .($editorRevises ? ' Perbaikan minor akan diselesaikan editor; Anda tidak perlu mengunggah ulang naskah.' : ''),
+                .($editorRevises ? ' Perbaikan minor akan diselesaikan editor; Anda tidak perlu mengunggah ulang naskah.' : '')
+                .($manuscript->decision_file_path ? ' Editor menyertakan lampiran catatan; unduh dari rincian naskah.' : ''),
             route($route, absolute: false)
         );
     }

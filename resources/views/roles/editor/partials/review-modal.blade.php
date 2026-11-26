@@ -1,4 +1,4 @@
-{{-- Modal Detail Peninjauan: progres 3 reviewer, tenggat, status, pengingat & ganti reviewer. --}}
+{{-- Modal Detail Peninjauan: progres 3 reviewer, tenggat, status, pengingat, ganti reviewer & batalkan peninjauan. --}}
 <div x-data="reviewModal()"
      x-on:open-editor-modal.window="$event.detail.name === 'review' && open($event.detail.id)">
 
@@ -37,6 +37,10 @@
                                   :class="rv.status_badge_class" x-text="rv.status_label"></span>
                         </div>
                     </div>
+                    <div class="px-4 py-3 text-sm text-gray-700" x-show="rv.decline_reason">
+                        <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Alasan menolak:</span>
+                        <span class="whitespace-pre-line" x-text="rv.decline_reason"></span>
+                    </div>
                     <div class="px-4 py-3 text-xs text-gray-500" x-show="rv.reminder_count > 0">
                         Pengingat terkirim <span x-text="rv.reminder_count"></span>×, terakhir
                         <span x-text="rv.reminded_at"></span>.
@@ -45,10 +49,9 @@
                         <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Hasil Review</p>
                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
                               :class="rv.recommendation_class" x-text="rv.recommendation_label"></span>
-                        <p class="text-sm text-gray-700 mt-2 whitespace-pre-line" x-text="rv.comments || 'Tanpa catatan.'"></p>
-                        <p x-show="rv.notes_for_editor" class="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 whitespace-pre-line">
-                            <span class="block text-xs font-semibold uppercase tracking-wider text-amber-700">Catatan rahasia untuk editor</span>
-                            <span x-text="rv.notes_for_editor"></span>
+                        <p class="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 whitespace-pre-line">
+                            <span class="block text-xs font-semibold uppercase tracking-wider text-amber-700">Catatan reviewer untuk editor</span>
+                            <span x-text="rv.notes_for_editor || 'Tanpa catatan.'"></span>
                         </p>
                     </div>
                     <div class="px-4 py-3" x-show="rv.can_replace">
@@ -61,7 +64,7 @@
             </template>
         </div>
 
-        {{-- Panel Ganti Reviewer (hanya untuk reviewer yang menolak / terlambat) --}}
+        {{-- Panel Ganti Reviewer (untuk reviewer yang belum menyelesaikan review) --}}
         <div x-show="form.review_id" class="space-y-4 rounded-xl border border-orange-200 bg-orange-50/40 p-4">
             @include('roles.editor.partials.recommendation-box')
 
@@ -94,6 +97,14 @@
         </div>
 
         <x-slot:footer>
+            <button type="button" x-show="detail?.can_cancel && !form.review_id" @click="cancelReview()" :disabled="submitting || !!successMsg"
+                    class="mr-auto px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-red-600 disabled:opacity-50 transition-colors">
+                Batalkan Peninjauan
+            </button>
+            <button type="button" x-show="form.review_id" @click="form.review_id = ''; form.reviewer_id = ''" :disabled="submitting"
+                    class="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800">
+                Batal Ganti
+            </button>
             <button type="button" x-show="(detail?.reviews ?? []).some(r => r.can_remind)" @click="remind()" :disabled="submitting || !!successMsg"
                     class="px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 disabled:opacity-50 transition-colors">
                 Kirim Pengingat
@@ -113,6 +124,7 @@ function reviewModal() {
         detailUrl: @js(route('editor.reviews.detail', '__ID__')),
         remindUrl: @js(route('editor.reviews.remind', '__ID__')),
         changeUrl: @js(route('editor.reviews.change', '__ID__')),
+        cancelUrl: @js(route('editor.reviews.cancel', '__ID__')),
         manuscriptId: null,
         form: { review_id: '', reviewer_id: '', editor_note: '', due_at: '' },
 
@@ -130,6 +142,11 @@ function reviewModal() {
         startReplace(reviewId) { this.form.review_id = reviewId; },
 
         remind() { this.submit(this.remindUrl.replace('__ID__', this.manuscriptId)); },
+
+        cancelReview() {
+            if (!confirm('Batalkan peninjauan naskah ini? Semua penugasan reviewer ronde ini dibatalkan dan reviewer diberi tahu.')) return;
+            this.submit(this.cancelUrl.replace('__ID__', this.manuscriptId));
+        },
 
         replace() {
             this.errorMsg = '';

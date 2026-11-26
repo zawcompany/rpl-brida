@@ -12,17 +12,23 @@ use App\Models\User;
  *  - Author            : naskahnya sendiri
  *  - Reviewer          : naskah dengan penugasan aktifnya (bukan yang ditolak/digantikan)
  *  - Administrator/lain: tidak ada akses ke isi naskah
+ * Lampiran keputusan editorial hanya untuk editor jurnal dan penulis naskah (bukan reviewer).
  */
 class ManuscriptPolicy
 {
     public function viewFile(User $user, Manuscript $manuscript): bool
     {
         return match ($user->role) {
-            'Editor'   => in_array($manuscript->journal_id, $user->journalIds(Journal::EDITOR), true),
-            'Author'   => $manuscript->author_id === $user->id,
+            'Editor' => in_array($manuscript->journal_id, $user->journalIds(Journal::EDITOR), true),
+            'Author' => $manuscript->author_id === $user->id,
             'Reviewer' => $manuscript->reviews()->where('reviewer_id', $user->id)
                 ->whereNull('superseded_at')->where('status', '!=', 'ditolak_reviewer')->exists(),
-            default    => false,
+            default => false,
         };
+    }
+
+    public function viewDecisionFile(User $user, Manuscript $manuscript): bool
+    {
+        return in_array($user->role, ['Editor', 'Author'], true) && $this->viewFile($user, $manuscript);
     }
 }

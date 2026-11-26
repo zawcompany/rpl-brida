@@ -76,6 +76,19 @@ class Journal extends Model
         return 'slug';
     }
 
+    /**
+     * Selain slug, alamat lama/berbasis id (mis. /jurnal/1/metadata.xml yang dipakai pemanen metadata) tetap dikenali.
+     * Slug yang kebetulan berupa angka tetap ditemukan lewat slug bila tidak ada id yang cocok.
+     */
+    public function resolveRouteBinding($value, $field = null): ?Model
+    {
+        if ($field === null && ctype_digit((string) $value)) {
+            return $this->whereKey((int) $value)->first() ?? parent::resolveRouteBinding($value, $field);
+        }
+
+        return parent::resolveRouteBinding($value, $field);
+    }
+
     // ------------------------------------------------------------------ Relasi
 
     public function members(): BelongsToMany

@@ -14,16 +14,15 @@ function Check($name, [scriptblock]$test) {
 }
 
 function Get-Status($path) {
-    try {
-        $r = Invoke-WebRequest "$BaseUrl$path" -UseBasicParsing -MaximumRedirection 0 -TimeoutSec 20 -ErrorAction Stop
-        return @{ Code = [int]$r.StatusCode; Headers = $r.Headers; Time = 0 }
-    } catch {
-        $resp = $_.Exception.Response
-        if ($resp) { return @{ Code = [int]$resp.StatusCode; Headers = $resp.Headers } }
-        throw
-    }
+    # HttpWebRequest tanpa auto-redirect: di Windows PowerShell 5.1, Invoke-WebRequest -MaximumRedirection 0
+    # melempar "Operation is not valid due to the current state of the object" untuk respons 302.
+    $req = [System.Net.HttpWebRequest]::Create("$BaseUrl$path")
+    $req.AllowAutoRedirect = $false
+    $req.Timeout = 20000
+    try { $resp = $req.GetResponse() }
+    catch [System.Net.WebException] { $resp = $_.Exception.Response; if (-not $resp) { throw } }
+    try { return @{ Code = [int]$resp.StatusCode; Headers = $resp.Headers } } finally { $resp.Close() }
 }
-
 # 1. Halaman publik harus 200
 foreach ($p in '/', '/articles', '/archives', '/jurnal', '/login', '/register',
                '/kebijakan-privasi', '/syarat-penggunaan', '/etika-publikasi') {

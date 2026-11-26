@@ -137,7 +137,7 @@ class AuthorService
             ->withQueryString();
     }
 
-    /** Hasil Review & Revisi: hanya naskah berstatus 'revisi'. */
+    /** Catatan Editor & Revisi: hanya naskah berstatus 'revisi'. */
     public function getRevisionQueue(User $author, array $filters = []): LengthAwarePaginator
     {
         $search = $filters['search'] ?? null;
@@ -213,28 +213,6 @@ class AuthorService
     // -------------------------------------------------------------------------
     // Revisi
     // -------------------------------------------------------------------------
-
-    /**
-     * Komentar reviewer untuk author — anonim (tanpa identitas reviewer). Hanya `comments`;
-     * `notes_for_editor` bersifat rahasia (khusus editor) dan sengaja tidak pernah disertakan.
-     *
-     * @return array<int, array{label: string, recommendation: ?string, recommendation_class: string, comments: string}>
-     */
-    public function getReviewerFeedback(Manuscript $manuscript): array
-    {
-        return $manuscript->reviews()
-            ->whereNull('superseded_at')
-            ->where('status', 'selesai')
-            ->orderBy('completed_at')
-            ->get()
-            ->values()
-            ->map(fn ($review, int $i) => [
-                'label' => 'Reviewer '.($i + 1),
-                'recommendation' => $review->recommendation_label,
-                'recommendation_class' => $review->recommendation_badge_class,
-                'comments' => $review->comments ?: 'Tanpa catatan.',
-            ])->all();
-    }
 
     /**
      * Unggah revisi: simpan berkas + surat tanggapan, lalu status -> 'menunggu_keputusan'

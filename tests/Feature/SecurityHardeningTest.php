@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Manuscript;
+use App\Models\ResearchField;
 use App\Models\Review;
 use App\Models\User;
 use App\Services\Files\DocumentInspector;
@@ -16,7 +17,7 @@ use Tests\TestCase;
 
 class SecurityHardeningTest extends TestCase
 {
-    use RefreshDatabase, MakesDocuments;
+    use MakesDocuments, RefreshDatabase;
 
     private function user(string $role, string $email): User
     {
@@ -28,6 +29,24 @@ class SecurityHardeningTest extends TestCase
         return Manuscript::create($attrs + ['author_id' => $author->id, 'title' => 'N', 'status' => 'pending']);
     }
 
+    // ------------------------------------------------------------ halaman error
+
+    public function test_unknown_pages_show_clean_indonesian_not_found_page(): void
+    {
+        foreach (['/asdfgh', '/articles/99999'] as $url) {
+            $this->get($url)->assertNotFound()
+                ->assertSee('Halaman tidak ditemukan')
+                ->assertSee('Kembali ke Beranda')
+                ->assertDontSee(base_path(), false);
+        }
+    }
+
+    public function test_forbidden_page_is_shown_in_indonesian(): void
+    {
+        $this->actingAs($this->user('Author', 'a@t.test'))->get('/admin/dashboard')
+            ->assertForbidden()->assertSee('Akses ditolak');
+    }
+
     // ------------------------------------------------------------ rute
 
     public function test_no_route_uses_a_closure_so_route_cache_works(): void
@@ -37,7 +56,7 @@ class SecurityHardeningTest extends TestCase
             ->reject(fn ($r) => in_array($r->uri(), ['up', 'storage/{path}'], true)) // rute bawaan framework
             ->map(fn ($r) => $r->uri())->values()->all();
 
-        $this->assertSame([], $closures, 'Route closure menggagalkan route:cache: ' . implode(', ', $closures));
+        $this->assertSame([], $closures, 'Route closure menggagalkan route:cache: '.implode(', ', $closures));
     }
 
     public function test_dev_login_backdoor_is_not_registered_outside_local(): void
@@ -54,7 +73,20 @@ class SecurityHardeningTest extends TestCase
             $this->post('/login', ['email' => 'x@t.test', 'password' => 'salah'])->assertSessionHasErrors('email');
         }
 
-        $this->post('/login', ['email' => 'x@t.test', 'password' => 'salah'])->assertStatus(429);
+        $this->post('/login', ['email' => 'x@t.test', 'password' => 'salah'])
+            ->assertSessionHasErrors(['email' => 'Terlalu banyak percobaan masuk. Tunggu 1 menit, lalu coba lagi.'])
+            ->assertHeader('Retry-After');
+    }
+
+    public function test_login_limit_is_not_consumed_by_other_throttled_routes_or_other_accounts(): void
+    {
+        for ($i = 0; $i < 6; $i++) {
+            $this->get('/jurnal/1/metadata.json');
+            $this->post('/login', ['email' => 'lain@t.test', 'password' => 'salah']);
+        }
+
+        $this->post('/login', ['email' => 'x@t.test', 'password' => 'salah'])
+            ->assertSessionHasErrors(['email' => 'Email atau password salah.']);
     }
 
     // ------------------------------------------------------------ berkas privat
@@ -123,7 +155,7 @@ class SecurityHardeningTest extends TestCase
     {
         Storage::fake('local');
         $author = $this->user('Author', 'a@t.test');
-        $field = \App\Models\ResearchField::create(['name' => 'X', 'slug' => 'x']);
+        $field = ResearchField::create(['name' => 'X', 'slug' => 'x']);
 
         $this->actingAs($author)->post(route('author.manuscripts.store'), [
             'title' => 'T', 'research_field_id' => $field->id, 'abstract' => 'A', 'keywords' => 'k',

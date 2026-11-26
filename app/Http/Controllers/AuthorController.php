@@ -23,16 +23,14 @@ class AuthorController extends Controller
 
     private const FILTER_KEYS = ['search', 'status', 'per_page'];
 
-    public function __construct(private readonly AuthorService $authorService)
-    {
-    }
+    public function __construct(private readonly AuthorService $authorService) {}
 
     // ------------------------------------------------------------------ Dashboard
 
     public function dashboard(Request $request): View
     {
         return view('roles.author.dashboard', [
-            'stats'  => $this->authorService->getDashboardStats($request->user()),
+            'stats' => $this->authorService->getDashboardStats($request->user()),
             'recent' => $this->authorService->getRecentManuscripts($request->user()),
         ]);
     }
@@ -42,7 +40,7 @@ class AuthorController extends Controller
     public function create(Request $request): View
     {
         return view('roles.author.submit', [
-            'fields'   => $this->authorService->getResearchFields(),
+            'fields' => $this->authorService->getResearchFields(),
             'journals' => $this->authorService->getAuthorJournals($request->user()),
         ]);
     }
@@ -79,11 +77,11 @@ class AuthorController extends Controller
 
         return response()->json([
             'manuscript' => AuthorManuscriptResource::make($manuscript)->resolve(),
-            'timeline'   => $this->authorService->buildTimeline($manuscript),
+            'timeline' => $this->authorService->buildTimeline($manuscript),
         ]);
     }
 
-    // ------------------------------------------------------------------ Hasil Review & Revisi
+    // ------------------------------------------------------------------ Catatan Editor & Revisi
 
     public function revisions(Request $request): View|JsonResponse
     {
@@ -102,8 +100,8 @@ class AuthorController extends Controller
         $manuscript->load('researchField');
 
         return response()->json([
+            // Reviewer hanya berkomunikasi dengan editor: penulis menerima catatan editorial, bukan komentar reviewer.
             'manuscript' => AuthorManuscriptResource::make($manuscript)->resolve(),
-            'reviews'    => $this->authorService->getReviewerFeedback($manuscript),
         ]);
     }
 

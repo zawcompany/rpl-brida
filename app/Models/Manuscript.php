@@ -21,6 +21,8 @@ class Manuscript extends Model
         'status',
         'editor_note',
         'editorial_note',
+        'decision_file_path',
+        'decision_file_name',
         'submitted_at',
         'decided_at',
         'revision_file_path',
@@ -41,24 +43,24 @@ class Manuscript extends Model
 
     protected $casts = [
         'declarations_accepted_at' => 'datetime',
-        'conflict_of_interest'     => 'boolean',
+        'conflict_of_interest' => 'boolean',
         'submitted_at' => 'datetime',
-        'decided_at'   => 'datetime',
+        'decided_at' => 'datetime',
         'published_at' => 'datetime',
         'revision_submitted_at' => 'datetime',
-        'co_authors'   => 'array',
+        'co_authors' => 'array',
     ];
 
     /** Semua nilai status yang valid — single source of truth. */
     public const STATUSES = [
-        'pending'              => 'Pending',
-        'pemeriksaan_awal'     => 'Pemeriksaan Awal',
-        'ditinjau'             => 'Sedang Ditinjau',
-        'menunggu_keputusan'   => 'Menunggu Keputusan',
-        'revisi'               => 'Perlu Revisi',
-        'disetujui'            => 'Disetujui',
-        'ditolak'              => 'Ditolak',
-        'diterbitkan'          => 'Diterbitkan',
+        'pending' => 'Pending',
+        'pemeriksaan_awal' => 'Pemeriksaan Awal',
+        'ditinjau' => 'Sedang Ditinjau',
+        'menunggu_keputusan' => 'Menunggu Keputusan',
+        'revisi' => 'Perlu Revisi',
+        'disetujui' => 'Disetujui',
+        'ditolak' => 'Ditolak',
+        'diterbitkan' => 'Diterbitkan',
     ];
 
     /** Status yang termasuk "Naskah Baru" (inbox editor). */
@@ -70,7 +72,7 @@ class Manuscript extends Model
     /** Keputusan administrasi awal (Naskah Baru) -> status naskah. Terima = lanjut ke tahap review. */
     public const INITIAL_DECISION_STATUS = [
         'diterima' => 'ditinjau',
-        'ditolak'  => 'ditolak',
+        'ditolak' => 'ditolak',
     ];
 
     /** Jumlah reviewer anonim yang wajib menyelesaikan review sebelum editor memutuskan. */
@@ -83,17 +85,17 @@ class Manuscript extends Model
      * (lewat menu Edisi) tanpa melibatkan author lagi.
      */
     public const DECISION_STATUS = [
-        'diterima'     => 'disetujui',
+        'diterima' => 'disetujui',
         'revisi_minor' => 'disetujui',
         'revisi_mayor' => 'revisi',
-        'ditolak'      => 'ditolak',
+        'ditolak' => 'ditolak',
     ];
 
     public const DECISION_LABELS = [
-        'diterima'     => 'Diterima',
+        'diterima' => 'Diterima',
         'revisi_minor' => 'Revisi Minor',
         'revisi_mayor' => 'Revisi Mayor',
-        'ditolak'      => 'Ditolak',
+        'ditolak' => 'Ditolak',
     ];
 
     protected static function booted(): void
@@ -151,10 +153,10 @@ class Manuscript extends Model
         $done = $this->currentReviews->where('status', 'selesai')->count();
 
         return [
-            'done'     => $done,
+            'done' => $done,
             'required' => self::REQUIRED_REVIEWERS,
             'complete' => $done >= self::REQUIRED_REVIEWERS,
-            'label'    => "{$done} dari " . self::REQUIRED_REVIEWERS . ' reviewer telah selesai',
+            'label' => "{$done} dari ".self::REQUIRED_REVIEWERS.' reviewer telah selesai',
         ];
     }
 
@@ -187,13 +189,13 @@ class Manuscript extends Model
     {
         return match ($this->status) {
             'pending', 'pemeriksaan_awal' => 'bg-yellow-100 text-yellow-800',
-            'ditinjau'                    => 'bg-blue-100 text-blue-800',
-            'menunggu_keputusan'          => 'bg-purple-100 text-purple-800',
-            'revisi'                      => 'bg-orange-100 text-orange-800',
-            'disetujui'                   => 'bg-green-100 text-green-800',
-            'ditolak'                     => 'bg-red-100 text-red-800',
-            'diterbitkan'                 => 'bg-gray-100 text-gray-800',
-            default                       => 'bg-gray-100 text-gray-700',
+            'ditinjau' => 'bg-blue-100 text-blue-800',
+            'menunggu_keputusan' => 'bg-purple-100 text-purple-800',
+            'revisi' => 'bg-orange-100 text-orange-800',
+            'disetujui' => 'bg-green-100 text-green-800',
+            'ditolak' => 'bg-red-100 text-red-800',
+            'diterbitkan' => 'bg-gray-100 text-gray-800',
+            default => 'bg-gray-100 text-gray-700',
         };
     }
 
@@ -222,6 +224,12 @@ class Manuscript extends Model
     public function getFinalFileUrlAttribute(): ?string
     {
         return $this->fileRoute($this->final_file_path, 'final');
+    }
+
+    /** Lampiran keputusan editorial untuk penulis (hanya editor dan penulis yang boleh membukanya). */
+    public function getDecisionFileUrlAttribute(): ?string
+    {
+        return $this->fileRoute($this->decision_file_path, 'decision');
     }
 
     /** Berkas privat: URL mengarah ke rute terotorisasi, bukan ke path storage. */

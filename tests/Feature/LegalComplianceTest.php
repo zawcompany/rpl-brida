@@ -19,7 +19,7 @@ class LegalComplianceTest extends TestCase
 
     private function user(string $role): User
     {
-        return User::create(['name' => $role . uniqid(), 'email' => uniqid() . '@t.test', 'password' => 'password', 'role' => $role]);
+        return User::create(['name' => $role.uniqid(), 'email' => uniqid().'@t.test', 'password' => 'password', 'role' => $role]);
     }
 
     private function registerData(array $extra = []): array
@@ -205,6 +205,17 @@ class LegalComplianceTest extends TestCase
             ->assertJsonPath('records.0.rights', 'https://creativecommons.org/licenses/by/4.0/');
     }
 
+    public function test_journal_urls_also_accept_numeric_id(): void
+    {
+        $j = Journal::default();
+        $this->publishedArticle($j);
+
+        $this->get("/jurnal/{$j->id}/metadata.json")->assertOk()->assertJsonPath('count', 1);
+        $this->get("/jurnal/{$j->id}/metadata.xml")->assertOk();
+        $this->get("/jurnal/{$j->id}")->assertOk()->assertSee($j->name);
+        $this->get('/jurnal/99999/metadata.json')->assertNotFound();
+    }
+
     // ------------------------------------------------------------- DOI oleh editor
 
     private function editorFor(Journal $j): User
@@ -279,7 +290,7 @@ class LegalComplianceTest extends TestCase
     public function test_metadata_export_hidden_for_inactive_journal_and_bad_format(): void
     {
         $j = Journal::default();
-        $this->get('/jurnal/' . $j->slug . '/metadata.csv')->assertNotFound();
+        $this->get('/jurnal/'.$j->slug.'/metadata.csv')->assertNotFound();
         $j->update(['is_active' => false]);
         $this->get(route('journals.metadata', [$j, 'xml']))->assertNotFound();
     }

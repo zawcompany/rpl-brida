@@ -7,16 +7,19 @@
     <title>{{ $title ?? 'SIMPIL BRIDA Kota Makassar' }}</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>[x-cloak] { display: none !important; }</style>
 </head>
-<body class="bg-gray-50 font-sans antialiased text-gray-800" 
-      x-data="{ sidebarOpen: true }">
+{{-- Di layar kecil (< lg) sidebar mulai tertutup (hanya ikon) dan saat dibuka tampil menumpuk di atas konten,
+     agar isi halaman tidak terhimpit di HP. --}}
+<body class="bg-gray-50 font-sans antialiased text-gray-800"
+      x-data="{ sidebarOpen: window.innerWidth >= 1024 }">
 
     <div class="flex h-screen overflow-hidden">
 
         <!-- SIDEBAR (Sisi Kiri) -->
         <aside 
-            class="bg-white border-r border-gray-200 flex flex-col transition-all duration-300 ease-in-out select-none flex-shrink-0 z-20"
-            :class="sidebarOpen ? 'w-64' : 'w-20'"
+            class="bg-white border-r border-gray-200 flex flex-col transition-all duration-300 ease-in-out select-none flex-shrink-0 z-30"
+            :class="sidebarOpen ? 'w-64 fixed inset-y-0 left-0 shadow-xl lg:static lg:shadow-none' : 'w-16 sm:w-20'"
         >
             <!-- Header Sidebar & Logo -->
             <div class="h-20 flex items-center justify-center px-6 border-b border-gray-100 overflow-hidden">
@@ -75,11 +78,14 @@
             </nav>
         </aside>
 
+        <!-- Latar gelap saat sidebar terbuka di layar kecil; klik untuk menutup -->
+        <div x-show="sidebarOpen" x-cloak @click="sidebarOpen = false" class="fixed inset-0 z-20 bg-black/30 lg:hidden" aria-hidden="true"></div>
+
         <!-- AREA UTAMA (Sisi Kanan) -->
         <div class="flex-1 flex flex-col overflow-hidden">
             
             <!-- TOP NAVBAR -->
-            <header class="h-20 bg-white border-b border-gray-200 flex items-center justify-between px-8 z-10">
+            <header class="h-20 bg-white border-b border-gray-200 flex items-center justify-between px-4 sm:px-8 z-10">
                 <div class="flex items-center space-x-4">
                     <button 
                         @click="sidebarOpen = !sidebarOpen" 
@@ -93,16 +99,16 @@
                 </div>
 
                 <!-- Profil Singkat & Notifikasi -->
-                <div class="flex items-center space-x-6">
+                <div class="flex items-center space-x-3 sm:space-x-6">
                     <x-notification-bell />
 
-                    <div class="h-8 w-px bg-gray-200"></div>
+                    <div class="hidden sm:block h-8 w-px bg-gray-200"></div>
 
                     <div class="flex items-center space-x-3">
                         <div class="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center text-gray-600 font-semibold overflow-hidden">
                             {{ strtoupper(substr(Auth::user()->name ?? 'U', 0, 1)) }}
                         </div>
-                        <div class="text-left">
+                        <div class="hidden sm:block text-left">
                             <p class="text-sm font-semibold text-gray-800 leading-tight">{{ Auth::user()->name ?? 'User' }}</p>
                             <p class="text-xs text-gray-500 capitalize leading-tight mt-0.5">{{ Auth::user()->role ?? 'Role' }}</p>
                         </div>
@@ -111,7 +117,10 @@
             </header>
 
             <!-- KONTEN DINAMIS HALAMAN -->
-            <main class="flex-1 overflow-x-hidden overflow-y-auto p-8 bg-gray-50">
+            <main class="flex-1 overflow-x-hidden overflow-y-auto p-4 sm:p-8 bg-gray-50">
+                @if (session('auth_notice'))
+                    <div role="status" class="mb-4 px-4 py-3 bg-blue-50 border border-blue-200 text-blue-800 text-sm rounded-lg">{{ session('auth_notice') }}</div>
+                @endif
                 @yield('content')
             </main>
         </div>

@@ -24,9 +24,7 @@ class EditorController extends Controller
 
     private const FILTER_KEYS = ['search', 'date', 'per_page'];
 
-    public function __construct(private readonly EditorService $editorService)
-    {
-    }
+    public function __construct(private readonly EditorService $editorService) {}
 
     // -------------------------------------------------------------------------
     // Dashboard
@@ -35,7 +33,7 @@ class EditorController extends Controller
     public function dashboard(): View
     {
         return view('roles.editor.dashboard', [
-            'stats'          => $this->editorService->getDashboardStats(),
+            'stats' => $this->editorService->getDashboardStats(),
             'recentActivity' => $this->editorService->getRecentActivity(),
         ]);
     }
@@ -62,10 +60,10 @@ class EditorController extends Controller
         $manuscript->load(['author', 'researchField']);
 
         return response()->json([
-            'manuscript'     => ManuscriptSummaryResource::make($manuscript)->resolve(),
+            'manuscript' => ManuscriptSummaryResource::make($manuscript)->resolve(),
             'recommendations' => $this->editorService->getRecommendedReviewers($manuscript),
-            'reviewers'       => $this->editorService->getAssignableReviewers([], $manuscript),
-            'default_due_at'  => $this->editorService->defaultDueDate(),
+            'reviewers' => $this->editorService->getAssignableReviewers([], $manuscript),
+            'default_due_at' => $this->editorService->defaultDueDate(),
         ]);
     }
 
@@ -76,11 +74,11 @@ class EditorController extends Controller
         return $this->perform(
             fn () => $this->editorService->processDecision(
                 manuscript: $manuscript,
-                decision:   $decision,
+                decision: $decision,
                 reviewerIds: $request->validated('reviewer_ids') ?? [],
                 editorNote: $request->validated('editor_note'),
-                editorId:   $request->user()->id,
-                dueAt:      $request->validated('due_at'),
+                editorId: $request->user()->id,
+                dueAt: $request->validated('due_at'),
             ),
             $decision === 'ditolak' ? 'Naskah berhasil ditolak.' : 'Naskah berhasil diteruskan ke 3 reviewer.'
         );
@@ -111,14 +109,15 @@ class EditorController extends Controller
         $taken = $reviews->pluck('reviewer_id')->all();
 
         return response()->json([
-            'manuscript'      => ManuscriptSummaryResource::make($manuscript)->resolve(),
-            'progress'        => $manuscript->review_progress,
-            'reviews'         => ReviewResource::collection($reviews)->resolve(),
+            'manuscript' => ManuscriptSummaryResource::make($manuscript)->resolve(),
+            'progress' => $manuscript->review_progress,
+            'reviews' => ReviewResource::collection($reviews)->resolve(),
             'recommendations' => $reviews->contains(fn ($r) => $r->isReplaceable())
                 ? $this->editorService->getRecommendedReviewers($manuscript, $taken, 1)
                 : [],
-            'reviewers'       => $this->editorService->getAssignableReviewers($taken, $manuscript),
-            'default_due_at'  => $this->editorService->defaultDueDate(),
+            'reviewers' => $this->editorService->getAssignableReviewers($taken, $manuscript),
+            'default_due_at' => $this->editorService->defaultDueDate(),
+            'can_cancel' => $manuscript->status === 'ditinjau' && ! $reviews->contains('status', 'selesai'),
         ]);
     }
 
@@ -142,6 +141,16 @@ class EditorController extends Controller
                 $request->validated('due_at'),
             ),
             'Reviewer berhasil diganti.'
+        );
+    }
+
+    public function cancelReview(Request $request, Manuscript $manuscript): JsonResponse
+    {
+        return $this->perform(
+            fn () => $this->editorService->cancelReview($manuscript, $request->user()->id),
+            $manuscript->isRevision()
+                ? 'Peninjauan dibatalkan. Naskah kembali ke menu Keputusan Editorial.'
+                : 'Peninjauan dibatalkan. Naskah kembali ke menu Naskah Baru untuk dipilihkan reviewer lagi.'
         );
     }
 
@@ -171,13 +180,13 @@ class EditorController extends Controller
             ->get();
 
         return response()->json([
-            'manuscript'      => ManuscriptSummaryResource::make($manuscript)->resolve(),
-            'reviews'         => ReviewResource::collection($reviews)->resolve(),
-            'summary'         => $this->editorService->summarizeRecommendations($reviews),
-            'progress'        => $manuscript->load('currentReviews')->review_progress,
+            'manuscript' => ManuscriptSummaryResource::make($manuscript)->resolve(),
+            'reviews' => ReviewResource::collection($reviews)->resolve(),
+            'summary' => $this->editorService->summarizeRecommendations($reviews),
+            'progress' => $manuscript->load('currentReviews')->review_progress,
             'recommendations' => $manuscript->isRevision() ? $this->editorService->getRecommendedReviewers($manuscript) : [],
-            'reviewers'       => $manuscript->isRevision() ? $this->editorService->getAssignableReviewers([], $manuscript) : [],
-            'default_due_at'  => $this->editorService->defaultDueDate(),
+            'reviewers' => $manuscript->isRevision() ? $this->editorService->getAssignableReviewers([], $manuscript) : [],
+            'default_due_at' => $this->editorService->defaultDueDate(),
         ]);
     }
 
@@ -205,8 +214,9 @@ class EditorController extends Controller
                 $manuscript,
                 $decision,
                 $request->validated('editorial_note'),
+                $request->file('decision_file'),
             ),
-            'Keputusan editorial berhasil disimpan (' . Manuscript::DECISION_LABELS[$decision] . ').'
+            'Keputusan editorial berhasil disimpan ('.Manuscript::DECISION_LABELS[$decision].').'
         );
     }
 }

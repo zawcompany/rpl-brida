@@ -88,22 +88,20 @@ class JournalManagementController extends Controller
         return back()->with('success', 'Data jurnal diperbarui.');
     }
 
+    /** Hanya admin (rute admin): editor tidak lagi menambah/mengeluarkan anggota jurnal. */
     public function addMember(Request $request, Journal $journal): RedirectResponse
     {
-        $this->authorizeJournal($request, $journal);
-
         $data = $request->validate([
             'user_id' => ['required', 'integer', 'exists:users,id'],
-            'role' => ['required', Rule::in($this->manageableRoles($request))],
+            'role' => ['required', Rule::in(Journal::ROLES)],
         ]);
 
         return $this->act(fn () => $this->journals->addMember($journal, User::findOrFail($data['user_id']), $data['role']), 'Anggota ditambahkan.');
     }
 
-    public function removeMember(Request $request, Journal $journal, User $user, string $role): RedirectResponse
+    public function removeMember(Journal $journal, User $user, string $role): RedirectResponse
     {
-        $this->authorizeJournal($request, $journal);
-        abort_unless(in_array($role, $this->manageableRoles($request), true), 403);
+        abort_unless(in_array($role, Journal::ROLES, true), 404);
 
         return $this->act(fn () => $this->journals->removeMember($journal, $user, $role), 'Anggota dikeluarkan.');
     }
@@ -115,7 +113,10 @@ class JournalManagementController extends Controller
     {
         $journals = Journal::whereIn('id', $request->user()->journalIds(Journal::EDITOR))->orderBy('name')->get();
 
-        $journal = $journals->firstWhere('id', (int) $request->query('jurnal')) ?? $journals->first();
+        // ?jurnal= yang bukan jurnal editor ini (atau tidak ada) dijawab 404, bukan diam-diam membuka jurnal lain.
+        $journal = $request->filled('jurnal')
+            ? $journals->firstWhere('id', (int) $request->query('jurnal')) ?? abort(404)
+            : $journals->first();
 
         return view('roles.editor.journals', ['journals' => $journals] + ($journal ? $this->detail($journal, [Journal::REVIEWER]) : ['journal' => null]));
     }
@@ -166,20 +167,6 @@ class JournalManagementController extends Controller
             'cover.dimensions' => 'Berkas bukan gambar yang valid, atau resolusinya di luar batas (50 sampai 6000 piksel).',
             'cover.uploaded' => 'Cover gagal diunggah. Pastikan ukurannya tidak melebihi 2 MB.',
         ];
-    }
-
-    /** Admin mengelola semua jurnal; editor hanya jurnalnya sendiri. */
-    private function authorizeJournal(Request $request, Journal $journal): void
-    {
-        $user = $request->user();
-
-        abort_unless($user->isAdmin() || in_array($journal->id, $user->journalIds(Journal::EDITOR), true), 404);
-    }
-
-    /** Peran yang boleh dikelola pengguna saat ini: admin semua, editor hanya reviewer. */
-    private function manageableRoles(Request $request): array
-    {
-        return $request->user()->isAdmin() ? Journal::ROLES : [Journal::REVIEWER];
     }
 
     /** Data halaman detail: anggota per peran + kandidat untuk dropdown tambah anggota. */

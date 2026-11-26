@@ -21,12 +21,14 @@ use Tests\TestCase;
  */
 class MultiJournalTest extends TestCase
 {
-    use RefreshDatabase, MakesDocuments;
+    use MakesDocuments, RefreshDatabase;
 
     protected bool $autoJoinDefaultJournal = false;
 
     private Journal $a;   // jurnal bawaan (dibuat migrasi)
+
     private Journal $b;
+
     private ResearchField $field;
 
     protected function setUp(): void
@@ -46,10 +48,10 @@ class MultiJournalTest extends TestCase
     private function user(string $role, array $journals = []): User
     {
         $user = User::create([
-            'name'     => $role . ' ' . uniqid(),
-            'email'    => uniqid() . '@example.com',
+            'name' => $role.' '.uniqid(),
+            'email' => uniqid().'@example.com',
             'password' => 'password123',
-            'role'     => $role,
+            'role' => $role,
         ]);
 
         foreach ($journals as $journal) {
@@ -62,11 +64,11 @@ class MultiJournalTest extends TestCase
     private function manuscript(Journal $journal, User $author, string $status = 'pending', array $attrs = []): Manuscript
     {
         return Manuscript::create($attrs + [
-            'journal_id'        => $journal->id,
-            'author_id'         => $author->id,
+            'journal_id' => $journal->id,
+            'author_id' => $author->id,
             'research_field_id' => $this->field->id,
-            'title'             => 'Naskah ' . uniqid(),
-            'status'            => $status,
+            'title' => 'Naskah '.uniqid(),
+            'status' => $status,
         ]);
     }
 
@@ -242,10 +244,10 @@ class MultiJournalTest extends TestCase
 
     public function test_editor_sees_only_manuscripts_of_own_journal(): void
     {
-        $author  = $this->user('Author', [$this->a, $this->b]);
+        $author = $this->user('Author', [$this->a, $this->b]);
         $editorA = $this->user('Editor', [$this->a]);
-        $mine    = $this->manuscript($this->a, $author, 'pending', ['title' => 'Milik Jurnal A']);
-        $other   = $this->manuscript($this->b, $author, 'pending', ['title' => 'Milik Jurnal B']);
+        $mine = $this->manuscript($this->a, $author, 'pending', ['title' => 'Milik Jurnal A']);
+        $other = $this->manuscript($this->b, $author, 'pending', ['title' => 'Milik Jurnal B']);
 
         $titles = $this->actingAs($editorA)
             ? app(EditorService::class)->getNewManuscripts()->pluck('title')->all()
@@ -278,8 +280,8 @@ class MultiJournalTest extends TestCase
     public function test_editor_cannot_open_files_of_another_journal(): void
     {
         $author = $this->user('Author', [$this->a, $this->b]);
-        $mine   = $this->manuscript($this->a, $author, 'pending', ['file_path' => 'manuscripts/1/a.pdf', 'file_original_name' => 'a.pdf']);
-        $other  = $this->manuscript($this->b, $author, 'pending', ['file_path' => 'manuscripts/1/b.pdf', 'file_original_name' => 'b.pdf']);
+        $mine = $this->manuscript($this->a, $author, 'pending', ['file_path' => 'manuscripts/1/a.pdf', 'file_original_name' => 'a.pdf']);
+        $other = $this->manuscript($this->b, $author, 'pending', ['file_path' => 'manuscripts/1/b.pdf', 'file_original_name' => 'b.pdf']);
         Storage::disk('local')->put('manuscripts/1/a.pdf', '%PDF-1.4');
         Storage::disk('local')->put('manuscripts/1/b.pdf', '%PDF-1.4');
 
@@ -291,10 +293,10 @@ class MultiJournalTest extends TestCase
 
     public function test_review_attachment_is_hidden_from_editor_of_another_journal(): void
     {
-        $author   = $this->user('Author', [$this->b]);
+        $author = $this->user('Author', [$this->b]);
         $reviewer = $this->user('Reviewer', [$this->b]);
-        $m        = $this->manuscript($this->b, $author, 'ditinjau');
-        $review   = Review::create([
+        $m = $this->manuscript($this->b, $author, 'ditinjau');
+        $review = Review::create([
             'manuscript_id' => $m->id, 'reviewer_id' => $reviewer->id, 'assigned_by' => $reviewer->id,
             'status' => 'selesai', 'review_file_path' => 'reviews/1/r.pdf', 'review_file_name' => 'r.pdf', 'due_at' => now()->addDay(),
         ]);
@@ -309,9 +311,9 @@ class MultiJournalTest extends TestCase
     public function test_assignable_reviewers_are_members_of_the_manuscript_journal(): void
     {
         $author = $this->user('Author', [$this->a]);
-        $inA    = $this->user('Reviewer', [$this->a]);
-        $inB    = $this->user('Reviewer', [$this->b]);
-        $m      = $this->manuscript($this->a, $author);
+        $inA = $this->user('Reviewer', [$this->a]);
+        $inB = $this->user('Reviewer', [$this->b]);
+        $m = $this->manuscript($this->a, $author);
 
         $this->actingAs($this->user('Editor', [$this->a]));
         $service = app(EditorService::class);
@@ -324,8 +326,8 @@ class MultiJournalTest extends TestCase
 
     public function test_reviewer_from_another_journal_cannot_be_assigned(): void
     {
-        $author  = $this->user('Author', [$this->a]);
-        $editor  = $this->user('Editor', [$this->a]);
+        $author = $this->user('Author', [$this->a]);
+        $editor = $this->user('Editor', [$this->a]);
         $members = [$this->user('Reviewer', [$this->a]), $this->user('Reviewer', [$this->a])];
         $outsider = $this->user('Reviewer', [$this->b]);
         $m = $this->manuscript($this->a, $author);
@@ -353,7 +355,7 @@ class MultiJournalTest extends TestCase
 
     public function test_submission_notifies_only_editors_of_that_journal(): void
     {
-        $author  = $this->user('Author', [$this->a]);
+        $author = $this->user('Author', [$this->a]);
         $editorA = $this->user('Editor', [$this->a]);
         $editorB = $this->user('Editor', [$this->b]);
 
@@ -372,7 +374,7 @@ class MultiJournalTest extends TestCase
     {
         $editorA = $this->user('Editor', [$this->a]);
         $editorB = $this->user('Editor', [$this->b]);
-        $data    = ['volume' => 1, 'number' => 1, 'year' => 2026];
+        $data = ['volume' => 1, 'number' => 1, 'year' => 2026];
 
         $this->actingAs($editorA)->post(route('editor.issues.store'), $data)->assertSessionHasNoErrors();
         $this->actingAs($editorA)->post(route('editor.issues.store'), $data)->assertSessionHasErrors('number'); // kembar di jurnal yang sama
@@ -386,7 +388,7 @@ class MultiJournalTest extends TestCase
     public function test_editor_cannot_touch_issue_of_another_journal_or_choose_foreign_journal(): void
     {
         $editorA = $this->user('Editor', [$this->a]);
-        $issueB  = Issue::create(['journal_id' => $this->b->id, 'volume' => 1, 'number' => 1, 'year' => 2026, 'status' => 'draft']);
+        $issueB = Issue::create(['journal_id' => $this->b->id, 'volume' => 1, 'number' => 1, 'year' => 2026, 'status' => 'draft']);
 
         $this->actingAs($editorA)->put(route('editor.issues.update', $issueB), ['volume' => 2, 'number' => 1, 'year' => 2026])->assertNotFound();
         $this->delete(route('editor.issues.destroy', $issueB))->assertNotFound();
@@ -400,7 +402,7 @@ class MultiJournalTest extends TestCase
         $author = $this->user('Author', [$this->b]);
         $editor = $this->user('Editor', [$this->a, $this->b]);
         $issueA = Issue::create(['journal_id' => $this->a->id, 'volume' => 1, 'number' => 1, 'year' => 2026, 'status' => 'draft']);
-        $fromB  = $this->manuscript($this->b, $author, 'disetujui');
+        $fromB = $this->manuscript($this->b, $author, 'disetujui');
 
         $this->actingAs($editor)
             ->post(route('editor.issues.manuscripts.attach', $issueA), ['manuscript_id' => $fromB->id, 'final_file' => $this->pdf()])
@@ -415,7 +417,7 @@ class MultiJournalTest extends TestCase
 
     public function test_admin_creates_journal_and_appoints_editor(): void
     {
-        $admin  = $this->user('Administrator');
+        $admin = $this->user('Administrator');
         $editor = $this->user('Editor');
 
         $this->actingAs($admin)->post(route('admin.journals.store'), ['name' => 'Jurnal Kebijakan', 'abbreviation' => 'JK'])
@@ -433,7 +435,7 @@ class MultiJournalTest extends TestCase
 
     public function test_member_role_must_match_account_type(): void
     {
-        $admin  = $this->user('Administrator');
+        $admin = $this->user('Administrator');
         $author = $this->user('Author');
 
         $this->actingAs($admin)->post(route('admin.journals.members.add', $this->a), ['user_id' => $author->id, 'role' => 'Editor'])
@@ -442,31 +444,44 @@ class MultiJournalTest extends TestCase
         $this->assertFalse($author->isMemberOf($this->a));
     }
 
-    public function test_editor_manages_reviewers_of_own_journal_only(): void
+    public function test_editor_sees_journal_reviewers_read_only_and_cannot_change_membership(): void
     {
-        $editorA  = $this->user('Editor', [$this->a]);
-        $reviewer = $this->user('Reviewer');
+        $editorA = $this->user('Editor', [$this->a]);
+        $reviewer = $this->user('Reviewer', [$this->a]);
+        $outsider = $this->user('Reviewer');
 
-        $this->actingAs($editorA)->post(route('editor.journals.members.add', $this->a), ['user_id' => $reviewer->id, 'role' => 'Reviewer'])
-            ->assertSessionHas('success');
+        $this->actingAs($editorA)->get(route('editor.journals.index'))->assertOk()
+            ->assertSee($reviewer->name)
+            ->assertSee('ditetapkan oleh admin')
+            ->assertDontSee('Tambahkan')
+            ->assertDontSee($outsider->email);
+
+        // Rute tambah/keluarkan anggota milik admin; editor ditolak.
+        $this->post(route('admin.journals.members.add', $this->a), ['user_id' => $outsider->id, 'role' => 'Reviewer'])->assertForbidden();
+        $this->delete(route('admin.journals.members.remove', [$this->a, $reviewer, 'Reviewer']))->assertForbidden();
+
+        $this->assertFalse($outsider->isMemberOf($this->a));
         $this->assertTrue($reviewer->isMemberOf($this->a, Journal::REVIEWER));
+    }
 
-        // jurnal lain: tidak ditemukan; dan editor tidak boleh menunjuk editor lain
-        $this->post(route('editor.journals.members.add', $this->b), ['user_id' => $reviewer->id, 'role' => 'Reviewer'])->assertNotFound();
-        $this->post(route('editor.journals.members.add', $this->a), ['user_id' => $this->user('Editor')->id, 'role' => 'Editor'])
-            ->assertSessionHasErrors('role');
+    public function test_editor_journal_page_returns_404_for_journal_outside_their_journals(): void
+    {
+        $editorA = $this->user('Editor', [$this->a]);
+        $this->actingAs($editorA);
 
-        $this->get(route('editor.journals.index'))->assertOk()->assertSee($reviewer->name);
+        $this->get(route('editor.journals.index', ['jurnal' => $this->a->id]))->assertOk()->assertSee($this->a->name);
+        $this->get(route('editor.journals.index', ['jurnal' => $this->b->id]))->assertNotFound();
+        $this->get(route('editor.journals.index', ['jurnal' => 99999]))->assertNotFound();
     }
 
     public function test_reviewer_with_active_review_cannot_be_removed_from_journal(): void
     {
-        $editor   = $this->user('Editor', [$this->a]);
+        $editor = $this->user('Editor', [$this->a]);
         $reviewer = $this->user('Reviewer', [$this->a]);
-        $m        = $this->manuscript($this->a, $this->user('Author', [$this->a]), 'ditinjau');
+        $m = $this->manuscript($this->a, $this->user('Author', [$this->a]), 'ditinjau');
         Review::create(['manuscript_id' => $m->id, 'reviewer_id' => $reviewer->id, 'assigned_by' => $editor->id, 'status' => 'diterima', 'due_at' => now()->addDay()]);
 
-        $this->actingAs($editor)->delete(route('editor.journals.members.remove', [$this->a, $reviewer, 'Reviewer']))
+        $this->actingAs($this->user('Administrator'))->delete(route('admin.journals.members.remove', [$this->a, $reviewer, 'Reviewer']))
             ->assertSessionHas('error');
 
         $this->assertTrue($reviewer->isMemberOf($this->a, Journal::REVIEWER));

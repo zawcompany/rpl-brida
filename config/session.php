@@ -34,7 +34,10 @@ return [
 
     'lifetime' => (int) env('SESSION_LIFETIME', 240),
 
-    'expire_on_close' => env('SESSION_EXPIRE_ON_CLOSE', false),
+    // Tanpa "Ingat saya", sesi berakhir saat browser ditutup; dengan "Ingat saya", cookie remember (lihat
+    // auth.guards.web.remember) membuat pengguna tetap masuk. Sebelumnya sesi bertahan 4 jam walau browser
+    // ditutup, sehingga kotak "Ingat saya" tidak terasa bedanya.
+    'expire_on_close' => (bool) env('SESSION_EXPIRE_ON_CLOSE', true),
 
     /*
     |--------------------------------------------------------------------------

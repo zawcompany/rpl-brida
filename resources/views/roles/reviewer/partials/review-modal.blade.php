@@ -41,10 +41,10 @@
             </div>
         </div>
 
-        <x-editor.file-preview label="Berkas Naskah" url="detail.review.manuscript.file_url" />
+        <x-editor.file-preview label="Berkas Naskah" url="detail?.review?.manuscript?.file_url" name="detail?.review?.manuscript?.file_name" />
 
         <div x-show="r?.manuscript.revision_url">
-            <x-editor.file-preview label="Berkas Revisi dari Author" url="detail.review.manuscript.revision_url" :preview="false" />
+            <x-editor.file-preview label="Berkas Revisi dari Author" url="detail?.review?.manuscript?.revision_url" :preview="false" />
         </div>
 
         <hr class="border-gray-100">
@@ -89,7 +89,7 @@
                         <fieldset class="rounded-xl border border-gray-200 p-4">
                             <legend class="px-1 text-sm font-medium text-gray-800" x-text="c.label"></legend>
                             <div class="mt-1 space-y-1.5">
-                                <template x-for="lv in r.levels" :key="lv">
+                                <template x-for="lv in r?.levels ?? []" :key="lv">
                                     <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
                                         <input type="radio" :name="c.key" :value="lv" x-model="form.scores[c.key]" class="h-4 w-4 accent-red-600">
                                         <span x-text="lv"></span>
@@ -101,22 +101,14 @@
                 </div>
             </div>
 
-            <div>
-                <label class="block text-xs font-semibold text-gray-600 mb-1.5" for="rv-comments">
-                    Komentar & Perbaikan untuk Author <span class="text-red-500">*</span>
-                    <span class="font-normal text-gray-400">(dapat dibaca penulis secara anonim)</span>
-                </label>
-                <textarea id="rv-comments" x-model="form.comments" rows="5" maxlength="5000"
-                          placeholder="Tulis komentar, kritik, dan saran perbaikan yang konstruktif..."
-                          class="w-full text-sm border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-y"></textarea>
-            </div>
-
+            {{-- Reviewer hanya berkomunikasi dengan editor; editor yang meneruskan ringkasan ke penulis. --}}
             <div>
                 <label class="block text-xs font-semibold text-gray-600 mb-1.5" for="rv-notes">
-                    Catatan Rahasia untuk Editor <span class="font-normal text-gray-400">(opsional, tidak terlihat oleh penulis)</span>
+                    Catatan Rahasia untuk Editor <span class="text-red-500">*</span>
+                    <span class="font-normal text-gray-400">(hanya dibaca editor, tidak terlihat oleh penulis)</span>
                 </label>
-                <textarea id="rv-notes" x-model="form.notes_for_editor" rows="3" maxlength="3000"
-                          placeholder="Mis. dugaan plagiarisme, konflik kepentingan, atau pertimbangan lain khusus editor..."
+                <textarea id="rv-notes" x-model="form.notes_for_editor" rows="6" maxlength="5000"
+                          placeholder="Tulis penilaian, kritik, dan saran perbaikan naskah untuk editor. Sertakan juga hal khusus, mis. dugaan plagiarisme atau konflik kepentingan..."
                           class="w-full text-sm border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-y"></textarea>
             </div>
 
@@ -152,19 +144,19 @@
                 <template x-for="c in r?.rubric ?? []" :key="c.key">
                     <div class="rounded-lg border border-gray-200 p-3">
                         <p class="text-xs text-gray-500" x-text="c.label"></p>
-                        <p class="text-sm font-semibold text-gray-800" x-text="r.result.scores[c.key] || '—'"></p>
+                        <p class="text-sm font-semibold text-gray-800" x-text="r?.result?.scores?.[c.key] || '—'"></p>
                     </div>
                 </template>
             </div>
             <p class="text-sm text-gray-700">Rekomendasi: <strong x-text="r?.result?.recommendation_label"></strong>
-                <span class="text-gray-400" x-show="r?.result?.score_average" x-text="`· rata-rata skor ${r.result.score_average}/4`"></span></p>
-            <p class="text-sm text-gray-700 whitespace-pre-line" x-text="r?.result?.comments"></p>
+                <span class="text-gray-400" x-show="r?.result?.score_average" x-text="`· rata-rata skor ${r?.result?.score_average}/4`"></span></p>
+            <p class="text-sm text-gray-700 whitespace-pre-line" x-text="r?.result?.notes_for_editor"></p>
             <a x-show="r?.result?.file_url" :href="r?.result?.file_url" target="_blank" rel="noopener"
                class="inline-block text-xs font-medium text-red-600 hover:text-red-700">Unduh berkas catatan review</a>
         </div>
 
         <x-slot:footer>
-            <button type="button" x-show="r?.can.submit || r?.can.edit" @click="save()" :disabled="submitting || !!successMsg"
+            <button type="button" x-show="r?.can.submit || r?.can.edit" @click="save()" :disabled="submitting || done"
                     class="px-5 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                 <span x-text="submitting ? 'Mengirim...' : (r?.can.edit ? 'Perbarui Review' : 'Kirim Review')"></span>
             </button>
@@ -175,7 +167,7 @@
 @push('scripts')
 <script>
 function reviewModal(reload) {
-    const blank = () => ({ scores: {}, comments: '', notes_for_editor: '', recommendation: '' });
+    const blank = () => ({ scores: {}, notes_for_editor: '', recommendation: '' });
 
     return editorModal({
         detailUrl: @js(route('reviewer.reviews.detail', '__ID__')),
@@ -188,6 +180,7 @@ function reviewModal(reload) {
         file: null,
         declining: false,
         reason: '',
+        done: false, // true setelah review terkirim/penugasan ditolak (modal akan menutup); terima penugasan tidak mengunci form
 
         r: null, // = detail.review (properti biasa: getter akan "beku" saat Object.assign di editorModal)
 
@@ -196,7 +189,7 @@ function reviewModal(reload) {
             this.r = d.review;
             const res = d.review.result;
             this.form = res
-                ? { scores: { ...res.scores }, comments: res.comments ?? '', notes_for_editor: res.notes_for_editor ?? '', recommendation: res.recommendation ?? '' }
+                ? { scores: { ...res.scores }, notes_for_editor: res.notes_for_editor ?? '', recommendation: res.recommendation ?? '' }
                 : blank();
         },
 
@@ -205,6 +198,7 @@ function reviewModal(reload) {
             this.r = null;
             this.declining = false;
             this.reason = '';
+            this.done = false;
             this.file = null;
             this.form = blank();
             this.$nextTick(() => { if (this.$refs.file) this.$refs.file.value = ''; });
@@ -227,6 +221,7 @@ function reviewModal(reload) {
                     this.detail = await window.editorApi(this.url(this.detailUrl));
                     this.onLoaded(this.detail);
                 } else {
+                    this.done = true;
                     setTimeout(() => (reload ? window.location.reload() : this.close()), 1000);
                 }
                 return res;
@@ -249,14 +244,13 @@ function reviewModal(reload) {
             this.errorMsg = '';
             const missing = this.r.rubric.find(c => !this.form.scores[c.key]);
             if (missing) { this.errorMsg = `Nilai "${missing.label}" belum dipilih.`; return; }
-            if (this.form.comments.trim().length < 10) { this.errorMsg = 'Komentar reviewer minimal 10 karakter.'; return; }
+            if (this.form.notes_for_editor.trim().length < 10) { this.errorMsg = 'Catatan untuk editor minimal 10 karakter.'; return; }
             if (!this.form.recommendation) { this.errorMsg = 'Pilih rekomendasi akhir.'; return; }
             if (this.file && this.file.size > 10 * 1024 * 1024) { this.errorMsg = 'Ukuran berkas maksimal 10 MB.'; return; }
 
             const body = new FormData();
             this.r.rubric.forEach(c => body.append(c.key, this.form.scores[c.key]));
-            body.append('comments', this.form.comments);
-            body.append('notes_for_editor', this.form.notes_for_editor ?? '');
+            body.append('notes_for_editor', this.form.notes_for_editor);
             body.append('recommendation', this.form.recommendation);
             if (this.file) body.append('review_file', this.file);
 

@@ -1,6 +1,7 @@
 @php
     $input = 'text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-red-500 focus:border-red-500 bg-white';
-    $prefix = auth()->user()->isAdmin() ? 'admin' : 'editor';
+    // Keanggotaan jurnal (editor/reviewer/penulis) hanya diatur admin; editor melihat daftar reviewernya saja.
+    $canManageMembers = auth()->user()->isAdmin();
     $roleLabel = ['Editor' => 'Editor', 'Reviewer' => 'Reviewer', 'Author' => 'Penulis'];
 @endphp
 
@@ -39,7 +40,8 @@
             <span class="text-xs text-gray-400">{{ ($members[$role] ?? collect())->count() }} anggota</span>
         </div>
 
-        <form method="POST" action="{{ route($prefix . '.journals.members.add', $journal) }}" class="px-6 py-4 flex flex-wrap items-end gap-3 border-b border-gray-100">
+        @if ($canManageMembers)
+        <form method="POST" action="{{ route('admin.journals.members.add', $journal) }}" class="px-6 py-4 flex flex-wrap items-end gap-3 border-b border-gray-100">
             @csrf
             <input type="hidden" name="role" value="{{ $role }}">
             <div class="min-w-[16rem]">
@@ -53,15 +55,22 @@
             </div>
             <button type="submit" class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">Tambahkan</button>
         </form>
+        @else
+        <p class="px-6 py-3 text-xs text-gray-500 bg-gray-50/60 border-b border-gray-100">
+            Daftar {{ strtolower($roleLabel[$role]) }} jurnal ditetapkan oleh admin. Saat meneruskan naskah ke tahap review, pilih 3 reviewer dari daftar ini.
+        </p>
+        @endif
 
         <ul class="divide-y divide-gray-100">
             @forelse (($members[$role] ?? collect()) as $m)
                 <li class="flex items-center justify-between gap-3 px-6 py-3 text-sm">
                     <span><span class="font-medium text-gray-800">{{ $m->name }}</span> <span class="text-gray-400">{{ $m->email }}</span></span>
-                    <form method="POST" action="{{ route($prefix . '.journals.members.remove', [$journal, $m, $role]) }}">
+                    @if ($canManageMembers)
+                    <form method="POST" action="{{ route('admin.journals.members.remove', [$journal, $m, $role]) }}">
                         @csrf @method('DELETE')
                         <button type="submit" class="text-xs font-semibold text-gray-500 hover:text-red-600">Keluarkan</button>
                     </form>
+                    @endif
                 </li>
             @empty
                 <li class="px-6 py-6 text-sm text-gray-400">Belum ada {{ strtolower($roleLabel[$role]) }}.</li>

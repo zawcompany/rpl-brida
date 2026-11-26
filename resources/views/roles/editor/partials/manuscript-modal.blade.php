@@ -5,7 +5,7 @@
     <x-editor.modal title="Detail Naskah" subtitle="Pemeriksaan administrasi & penugasan reviewer">
         @include('roles.editor.partials.manuscript-info', ['full' => true])
 
-        <x-editor.file-preview label="Berkas Naskah" url="detail.manuscript.file_url" />
+        <x-editor.file-preview label="Berkas Naskah" url="detail?.manuscript?.file_url" name="detail?.manuscript?.file_name" />
 
         <hr class="border-gray-100">
 
@@ -19,7 +19,7 @@
                     <select :id="`m-reviewer-${i}`" x-model="form.reviewer_ids[i]" :disabled="form.decision === 'ditolak'"
                             class="w-full text-sm border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-red-500 focus:border-red-500 bg-white disabled:bg-gray-50 disabled:text-gray-400">
                         <option value="">— Pilih Reviewer —</option>
-                        <template x-for="r in detail?.reviewers ?? []" :key="r.id">
+                        <template x-for="r in availableReviewers(detail?.reviewers, form.reviewer_ids, i)" :key="r.id">
                             <option :value="String(r.id)" x-text="`${r.name} (${r.active_load} naskah aktif)`"></option>
                         </template>
                     </select>
@@ -96,7 +96,11 @@ function manuscriptModal() {
                 this.errorMsg = 'Pilih 3 reviewer yang berbeda untuk meneruskan naskah ke tahap review.';
                 return;
             }
-            this.submit(this.assignUrl.replace('__ID__', this.manuscriptId), this.form);
+            // Tolak: kirim tanpa isian reviewer/tenggat (tidak relevan untuk naskah yang ditolak).
+            const body = this.form.decision === 'ditolak'
+                ? { decision: 'ditolak', editor_note: this.form.editor_note }
+                : this.form;
+            this.submit(this.assignUrl.replace('__ID__', this.manuscriptId), body);
         },
     });
 }

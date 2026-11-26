@@ -29,8 +29,7 @@ class ReviewerService
     public function __construct(
         private readonly ManuscriptFileStore $files,
         private readonly NotificationService $notifier,
-    ) {
-    }
+    ) {}
 
     // -------------------------------------------------------------------------
     // Dashboard & daftar
@@ -60,8 +59,8 @@ class ReviewerService
     }
 
     /**
-     * @param array{search?: ?string, status?: ?string, per_page?: int|string|null} $filters
-     * @param string[]|null $onlyStatuses batasi status secara paksa (mis. halaman "Selesai")
+     * @param  array{search?: ?string, status?: ?string, per_page?: int|string|null}  $filters
+     * @param  string[]|null  $onlyStatuses  batasi status secara paksa (mis. halaman "Selesai")
      */
     public function paginateAssignments(User $reviewer, array $filters = [], ?array $onlyStatuses = null): LengthAwarePaginator
     {
@@ -107,7 +106,7 @@ class ReviewerService
             throw new DomainException('Hanya penugasan yang belum direspon yang dapat ditolak.');
         }
 
-        $review->update(['status' => 'ditolak_reviewer', 'comments' => $reason, 'completed_at' => now()]);
+        $review->update(['status' => 'ditolak_reviewer', 'decline_reason' => $reason, 'completed_at' => now()]);
 
         ActivityLog::record('review.declined', "Reviewer {$review->reviewer->name} menolak penugasan review", $review->reviewer_id);
         $this->notifier->reviewDeclined($review->load(['manuscript', 'reviewer']));
@@ -120,7 +119,8 @@ class ReviewerService
      * review -> 'selesai'. Naskah -> 'menunggu_keputusan' (muncul di Keputusan Editorial) hanya
      * setelah semua reviewer (REQUIRED_REVIEWERS) mengumpulkan hasil. Hasil hanya terlihat oleh editor.
      *
-     * @param array{comments: string, recommendation: string} $data  + kolom rubrik (Review::RUBRIC)
+     * @param  array{notes_for_editor: string, recommendation: string}  $data  + kolom rubrik (Review::RUBRIC)
+     *
      * @throws DomainException
      */
     public function submit(Review $review, array $data, ?UploadedFile $file = null): Review
@@ -129,6 +129,10 @@ class ReviewerService
 
         if (! $review->isActive() || $review->manuscript->status !== 'ditinjau') {
             throw new DomainException('Review ini tidak dapat dikirim: penugasan tidak lagi aktif.');
+        }
+
+        if ($review->status === 'ditugaskan') {
+            throw new DomainException('Terima penugasan terlebih dahulu sebelum mengirim hasil review.');
         }
 
         DB::transaction(function () use ($review, $data, $file) {
@@ -188,7 +192,7 @@ class ReviewerService
     /** Kolom hasil review yang boleh ditulis (whitelist) + lampiran bila ada. */
     private function resultAttributes(array $data, ?UploadedFile $file, Review $review): array
     {
-        $attributes = array_intersect_key($data, array_flip([...array_keys(Review::RUBRIC), 'comments', 'notes_for_editor', 'recommendation']));
+        $attributes = array_intersect_key($data, array_flip([...array_keys(Review::RUBRIC), 'notes_for_editor', 'recommendation']));
 
         if ($file) {
             $attributes['review_file_path'] = $this->files->put($file, "reviews/{$review->id}");

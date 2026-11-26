@@ -9,12 +9,15 @@ use App\Models\ResearchField;
 use App\Models\Review;
 use App\Models\User;
 use App\Notifications\ReviewReminderNotification;
+use App\Services\Files\ManuscriptFileStore;
 use DomainException;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Throwable;
 
 /**
  * EditorService — seluruh logika bisnis alur kerja editor:
@@ -23,7 +26,10 @@ use Illuminate\Support\Facades\DB;
  */
 class EditorService
 {
-    public function __construct(private readonly NotificationService $notifier) {}
+    public function __construct(
+        private readonly NotificationService $notifier,
+        private readonly ManuscriptFileStore $files,
+    ) {}
 
     /** Durasi default review (hari) sejak penugasan. */
     public const REVIEW_DURATION_DAYS = 14;
@@ -364,7 +370,7 @@ class EditorService
             ?? throw new DomainException('Penugasan reviewer tidak ditemukan pada naskah ini.');
 
         if (! $current->isReplaceable()) {
-            throw new DomainException('Reviewer hanya dapat diganti jika menolak penugasan atau melewati tenggat waktu.');
+            throw new DomainException('Reviewer yang sudah menyelesaikan review tidak dapat diganti.');
         }
 
         // Satu reviewer tidak boleh memegang dua slot pada naskah yang sama.
@@ -379,7 +385,45 @@ class EditorService
                 $manuscript->update(['editor_note' => $editorNote]);
             }
 
-            return $this->assignReview($manuscript, $newReviewerId, $editorId, $dueAt);
+            // Reviewer lama yang masih memegang penugasan aktif diberi tahu agar tidak melanjutkan.
+            if (in_array($current->status, Review::ACTIVE_STATUSES, true)) {
+                $this->notifier->reviewAssignmentCancelled($current->setRelation('manuscript', $manuscript));
+            }
+
+            $replacement = $this->assignReview($manuscript, $newReviewerId, $editorId, $dueAt);
+            ActivityLog::record('review.replaced', "Reviewer naskah \"{$manuscript->title}\" diganti oleh editor", $editorId);
+
+            return $replacement;
+        });
+    }
+
+    /**
+     * Batalkan tahap peninjauan: semua penugasan ronde ini ditutup dan naskah kembali ke antrean sebelumnya
+     * (Naskah Baru, atau Keputusan Editorial untuk naskah revisi) sehingga editor dapat memilih reviewer dari awal.
+     * Hanya selama belum ada reviewer yang menyelesaikan review, agar hasil review tidak terbuang.
+     *
+     * @throws DomainException
+     */
+    public function cancelReview(Manuscript $manuscript, int $editorId): Manuscript
+    {
+        $this->ensureStatus($manuscript, ['ditinjau'], 'Peninjauan hanya dapat dibatalkan selama naskah berstatus Sedang Ditinjau.');
+
+        $reviews = $manuscript->currentReviews()->with('reviewer')->get();
+
+        if ($reviews->contains('status', 'selesai')) {
+            throw new DomainException('Peninjauan tidak dapat dibatalkan karena sudah ada reviewer yang menyelesaikan review. Ganti reviewer yang belum selesai saja.');
+        }
+
+        return DB::transaction(function () use ($manuscript, $reviews, $editorId) {
+            $manuscript->currentReviews()->update(['superseded_at' => now()]);
+            $manuscript->update(['status' => $manuscript->isRevision() ? 'menunggu_keputusan' : 'pending']);
+
+            $reviews->filter(fn (Review $r) => in_array($r->status, Review::ACTIVE_STATUSES, true))
+                ->each(fn (Review $r) => $this->notifier->reviewAssignmentCancelled($r->setRelation('manuscript', $manuscript)));
+
+            ActivityLog::record('review.cancelled', "Peninjauan naskah \"{$manuscript->title}\" dibatalkan editor", $editorId);
+
+            return $manuscript;
         });
     }
 
@@ -395,15 +439,28 @@ class EditorService
      *
      * @throws DomainException bila naskah tidak sedang menunggu keputusan
      */
-    public function recordEditorialDecision(Manuscript $manuscript, string $decision, ?string $note): Manuscript
+    public function recordEditorialDecision(Manuscript $manuscript, string $decision, ?string $note, ?UploadedFile $attachment = null): Manuscript
     {
         $this->ensureStatus($manuscript, ['menunggu_keputusan'], 'Naskah ini tidak sedang menunggu keputusan editorial.');
 
-        $manuscript->update([
-            'status' => Manuscript::DECISION_STATUS[$decision],
-            'editorial_note' => $note,
-            'decided_at' => now(),
-        ]);
+        // Setiap keputusan membawa lampirannya sendiri; lampiran keputusan sebelumnya diganti atau dihapus.
+        $oldAttachment = $manuscript->decision_file_path;
+        $newAttachment = $attachment ? $this->files->put($attachment, "decisions/{$manuscript->id}") : null;
+
+        try {
+            $manuscript->update([
+                'status' => Manuscript::DECISION_STATUS[$decision],
+                'editorial_note' => $note,
+                'decision_file_path' => $newAttachment,
+                'decision_file_name' => $attachment?->getClientOriginalName(),
+                'decided_at' => now(),
+            ]);
+        } catch (Throwable $e) {
+            $this->files->delete($newAttachment); // jangan tinggalkan berkas yatim
+            throw $e;
+        }
+
+        $this->files->delete($oldAttachment);
 
         ActivityLog::record('manuscript.decision', 'Keputusan editorial "'.Manuscript::DECISION_LABELS[$decision]."\" untuk naskah \"{$manuscript->title}\"");
         $this->notifier->editorialDecision($manuscript, Manuscript::DECISION_LABELS[$decision], $decision === 'revisi_minor');
@@ -432,6 +489,7 @@ class EditorService
             $manuscript->update(['status' => 'ditinjau', 'editor_note' => $editorNote ?: $manuscript->editor_note]);
 
             $this->assignReviewers($manuscript, $reviewerIds, $editorId, $dueAt);
+            ActivityLog::record('manuscript.rereview', "Naskah revisi \"{$manuscript->title}\" dikirim untuk review ulang", $editorId);
         });
     }
 

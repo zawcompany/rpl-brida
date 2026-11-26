@@ -42,6 +42,12 @@ window.allDistinct = function (ids) {
     return ids.every(Boolean) && new Set(ids).size === ids.length;
 };
 
+// Opsi dropdown reviewer ke-i: sembunyikan reviewer yang sudah dipilih di slot lain agar tidak ada nama kembar.
+window.availableReviewers = function (reviewers, chosenIds, i) {
+    const takenElsewhere = chosenIds.filter((id, j) => j !== i && id);
+    return (reviewers ?? []).filter(r => !takenElsewhere.includes(String(r.id)));
+};
+
 window.openEditorModal = function (name, id) {
     window.dispatchEvent(new CustomEvent('open-editor-modal', { detail: { name, id } }));
 };

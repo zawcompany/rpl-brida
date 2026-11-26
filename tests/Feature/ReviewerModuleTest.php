@@ -8,16 +8,19 @@ use App\Models\Review;
 use App\Models\User;
 use App\Services\ReviewerService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Tests\Concerns\MakesDocuments;
 use Tests\TestCase;
 
 class ReviewerModuleTest extends TestCase
 {
-    use RefreshDatabase, MakesDocuments;
+    use MakesDocuments, RefreshDatabase;
 
     private User $reviewer;
+
     private User $editor;
+
     private User $author;
 
     protected function setUp(): void
@@ -38,7 +41,7 @@ class ReviewerModuleTest extends TestCase
     private function assignment(string $status = 'ditugaskan', ?User $reviewer = null, array $review = [], string $msStatus = 'ditinjau'): Review
     {
         $m = Manuscript::create([
-            'author_id' => $this->author->id, 'title' => 'Naskah ' . $status, 'abstract' => 'Abstrak', 'keywords' => 'k',
+            'author_id' => $this->author->id, 'title' => 'Naskah '.$status, 'abstract' => 'Abstrak', 'keywords' => 'k',
             'status' => $msStatus, 'file_path' => 'manuscripts/a.pdf', 'file_original_name' => 'a.pdf', 'submitted_at' => now(),
             'research_field_id' => ResearchField::firstOrCreate(['slug' => 'x'], ['name' => 'Bidang X'])->id,
         ]);
@@ -53,7 +56,7 @@ class ReviewerModuleTest extends TestCase
     {
         return $override + [
             'relevansi_topik' => 'Baik', 'metodologi_penelitian' => 'Sangat Baik', 'kebaruan' => 'Cukup', 'kualitas_penulisan' => 'Baik',
-            'comments' => 'Metodologi perlu dijelaskan lebih rinci pada bab 3.', 'recommendation' => 'revisi_minor',
+            'notes_for_editor' => 'Metodologi perlu dijelaskan lebih rinci pada bab 3.', 'recommendation' => 'revisi_minor',
         ];
     }
 
@@ -132,6 +135,33 @@ class ReviewerModuleTest extends TestCase
         $this->postJson(route('reviewer.reviews.accept', $r))->assertUnprocessable(); // sudah direspon
     }
 
+    public function test_review_form_opens_only_after_assignment_is_accepted(): void
+    {
+        $r = $this->assignment();
+        $this->actingAs($this->reviewer);
+
+        $this->assertFalse($this->getJson(route('reviewer.reviews.detail', $r))->json('review.can.submit'));
+        $this->postJson(route('reviewer.reviews.submit', $r), $this->payload())
+            ->assertUnprocessable()->assertJsonFragment(['message' => 'Terima penugasan terlebih dahulu sebelum mengirim hasil review.']);
+        $this->assertSame('ditugaskan', $r->fresh()->status);
+
+        $this->postJson(route('reviewer.reviews.accept', $r))->assertOk();
+
+        $this->assertTrue($this->getJson(route('reviewer.reviews.detail', $r))->json('review.can.submit'));
+        $this->postJson(route('reviewer.reviews.submit', $r), $this->payload())->assertOk();
+        $this->assertSame('selesai', $r->fresh()->status);
+    }
+
+    public function test_assignment_action_label_follows_status(): void
+    {
+        $this->assignment('ditugaskan');
+        $this->actingAs($this->reviewer)->get(route('reviewer.manuscripts.index'))->assertOk()
+            ->assertSee('Lihat &amp; Respon', false)->assertDontSee('Lanjutkan Review');
+
+        Review::query()->update(['status' => 'diterima']);
+        $this->get(route('reviewer.manuscripts.index'))->assertSee('Lanjutkan Review');
+    }
+
     public function test_decline_requires_reason_notifies_editor_and_makes_review_replaceable(): void
     {
         $r = $this->assignment();
@@ -142,7 +172,11 @@ class ReviewerModuleTest extends TestCase
 
         $r->refresh();
         $this->assertSame('ditolak_reviewer', $r->status);
+        $this->assertSame('Bukan bidang saya.', $r->decline_reason);
         $this->assertTrue($r->isReplaceable());
+        $this->actingAs($this->editor)->getJson(route('editor.reviews.detail', $r->manuscript_id))
+            ->assertOk()->assertJsonPath('reviews.0.decline_reason', 'Bukan bidang saya.');
+        $this->actingAs($this->reviewer);
         $this->assertContains('review.declined', $this->editor->notifications()->get()->pluck('data.type')->all());
     }
 
@@ -219,12 +253,12 @@ class ReviewerModuleTest extends TestCase
         $this->actingAs($this->reviewer);
 
         $this->postJson(route('reviewer.reviews.submit', $r), [])->assertUnprocessable()
-            ->assertJsonValidationErrors(['relevansi_topik', 'metodologi_penelitian', 'kebaruan', 'kualitas_penulisan', 'comments', 'recommendation']);
+            ->assertJsonValidationErrors(['relevansi_topik', 'metodologi_penelitian', 'kebaruan', 'kualitas_penulisan', 'notes_for_editor', 'recommendation']);
         $this->postJson(route('reviewer.reviews.submit', $r), $this->payload(['kebaruan' => 'Luar Biasa']))->assertJsonValidationErrors('kebaruan');
         $this->postJson(route('reviewer.reviews.submit', $r), $this->payload(['recommendation' => 'lulus']))->assertJsonValidationErrors('recommendation');
-        $this->postJson(route('reviewer.reviews.submit', $r), $this->payload(['comments' => 'pendek']))->assertJsonValidationErrors('comments');
+        $this->postJson(route('reviewer.reviews.submit', $r), $this->payload(['notes_for_editor' => 'pendek']))->assertJsonValidationErrors('notes_for_editor');
         $this->postJson(route('reviewer.reviews.submit', $r), $this->payload([
-            'review_file' => \Illuminate\Http\UploadedFile::fake()->createWithContent('x.pdf', '<?php echo 1;'),
+            'review_file' => UploadedFile::fake()->createWithContent('x.pdf', '<?php echo 1;'),
         ]))->assertJsonValidationErrors('review_file');
 
         $this->assertSame('ditugaskan', $r->fresh()->status);
@@ -244,7 +278,7 @@ class ReviewerModuleTest extends TestCase
 
     public function test_reviewer_can_update_review_until_editor_decides(): void
     {
-        $r = $this->assignment('selesai', null, ['recommendation' => 'diterima', 'comments' => 'Awal'], 'menunggu_keputusan');
+        $r = $this->assignment('selesai', null, ['recommendation' => 'diterima', 'notes_for_editor' => 'Awal'], 'menunggu_keputusan');
         $this->actingAs($this->reviewer);
 
         $this->putJson(route('reviewer.reviews.update', $r), $this->payload(['recommendation' => 'revisi_mayor']))->assertOk();

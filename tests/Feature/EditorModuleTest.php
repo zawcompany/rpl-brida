@@ -18,11 +18,14 @@ use Tests\TestCase;
 
 class EditorModuleTest extends TestCase
 {
-    use RefreshDatabase, MakesDocuments;
+    use MakesDocuments, RefreshDatabase;
 
     private User $editor;
+
     private User $author;
+
     private ResearchField $fieldA;
+
     private ResearchField $fieldB;
 
     protected function setUp(): void
@@ -40,10 +43,10 @@ class EditorModuleTest extends TestCase
     private function makeUser(string $role, ?ResearchField $field = null): User
     {
         $user = User::create([
-            'name'     => $role . ' ' . uniqid(),
-            'email'    => uniqid() . '@example.com',
+            'name' => $role.' '.uniqid(),
+            'email' => uniqid().'@example.com',
             'password' => 'password123',
-            'role'     => $role,
+            'role' => $role,
         ]);
 
         $field && $user->researchFields()->attach($field->id);
@@ -54,10 +57,10 @@ class EditorModuleTest extends TestCase
     private function makeManuscript(string $status = 'pending', ?ResearchField $field = null, array $attrs = []): Manuscript
     {
         return Manuscript::create($attrs + [
-            'author_id'         => $this->author->id,
+            'author_id' => $this->author->id,
             'research_field_id' => ($field ?? $this->fieldA)->id,
-            'title'             => 'Naskah ' . uniqid(),
-            'status'            => $status,
+            'title' => 'Naskah '.uniqid(),
+            'status' => $status,
         ]);
     }
 
@@ -65,10 +68,10 @@ class EditorModuleTest extends TestCase
     {
         return Review::create($attrs + [
             'manuscript_id' => $m->id,
-            'reviewer_id'   => $reviewer->id,
-            'assigned_by'   => $this->editor->id,
-            'status'        => $status,
-            'due_at'        => now()->addDays(7),
+            'reviewer_id' => $reviewer->id,
+            'assigned_by' => $this->editor->id,
+            'status' => $status,
+            'due_at' => now()->addDays(7),
         ]);
     }
 
@@ -103,11 +106,11 @@ class EditorModuleTest extends TestCase
 
     public function test_rekomendasi_memprioritaskan_bidang_cocok_lalu_beban_paling_sedikit(): void
     {
-        $sibuk   = $this->makeUser('Reviewer', $this->fieldA);
-        $sedang  = $this->makeUser('Reviewer', $this->fieldA);
+        $sibuk = $this->makeUser('Reviewer', $this->fieldA);
+        $sedang = $this->makeUser('Reviewer', $this->fieldA);
         $longgar = $this->makeUser('Reviewer', $this->fieldA);
-        $lain    = $this->makeUser('Reviewer', $this->fieldB); // beban 0 tapi bidang beda
-        $nol     = $this->makeUser('Reviewer', $this->fieldA);
+        $lain = $this->makeUser('Reviewer', $this->fieldB); // beban 0 tapi bidang beda
+        $nol = $this->makeUser('Reviewer', $this->fieldA);
 
         foreach (range(1, 3) as $_) {
             $this->makeReview($this->makeManuscript('ditinjau'), $sibuk);
@@ -225,13 +228,26 @@ class EditorModuleTest extends TestCase
             ->postJson("/editor/naskah/{$m->id}/assign", ['decision' => 'ditolak'])->assertStatus(422);
     }
 
+    public function test_tolak_berhasil_walau_dropdown_reviewer_dikirim_kosong(): void
+    {
+        $m = $this->makeManuscript('pending');
+
+        // Bentuk data dari form lama: tiga dropdown kosong + tenggat terisi otomatis.
+        $this->actingAs($this->editor)->postJson("/editor/naskah/{$m->id}/assign", [
+            'decision' => 'ditolak', 'reviewer_ids' => ['', '', ''], 'due_at' => now()->addDays(14)->toDateString(),
+        ])->assertOk();
+
+        $this->assertSame('ditolak', $m->fresh()->status);
+        $this->assertSame(0, $m->reviews()->count());
+    }
+
     public function test_pencarian_dan_filter_tanggal_naskah_baru_via_ajax(): void
     {
         $this->makeManuscript('pending', null, ['title' => 'Kecerdasan Buatan Medis']);
         $this->makeManuscript('pending', null, ['title' => 'Jaringan Saraf Tiruan']);
 
         $json = $this->actingAs($this->editor)
-            ->getJson('/editor/naskah-baru?search=Medis&date=' . now()->toDateString())
+            ->getJson('/editor/naskah-baru?search=Medis&date='.now()->toDateString())
             ->assertOk()->json();
 
         $this->assertSame(1, $json['total']);
@@ -245,7 +261,7 @@ class EditorModuleTest extends TestCase
     {
         Notification::fake();
         $reviewer = $this->makeUser('Reviewer', $this->fieldA);
-        $selesai  = $this->makeUser('Reviewer', $this->fieldA);
+        $selesai = $this->makeUser('Reviewer', $this->fieldA);
         $m = $this->makeManuscript('ditinjau');
         $review = $this->makeReview($m, $reviewer);
         $this->makeReview($m, $selesai, 'selesai');
@@ -259,7 +275,7 @@ class EditorModuleTest extends TestCase
         $this->actingAs($this->editor)->postJson("/editor/peninjauan/{$m->id}/pengingat")->assertStatus(422);
     }
 
-    public function test_reviewer_hanya_bisa_diganti_bila_menolak_atau_terlambat(): void
+    public function test_reviewer_yang_belum_selesai_dapat_diganti_dan_diberi_tahu(): void
     {
         $lama = $this->makeUser('Reviewer', $this->fieldA);
         $baru = $this->makeUser('Reviewer', $this->fieldA);
@@ -267,16 +283,8 @@ class EditorModuleTest extends TestCase
         $review = $this->makeReview($m, $lama); // masih berjalan & belum terlambat
         $lain = $this->makeReview($m, $this->makeUser('Reviewer', $this->fieldA)); // slot lain tidak ikut terganti
 
-        $payload = ['review_id' => $review->id, 'reviewer_id' => $baru->id];
-
         $this->actingAs($this->editor)
-            ->postJson("/editor/peninjauan/{$m->id}/ganti-reviewer", $payload)
-            ->assertStatus(422);
-
-        $review->update(['due_at' => now()->subDay()]); // terlambat
-
-        $this->actingAs($this->editor)
-            ->postJson("/editor/peninjauan/{$m->id}/ganti-reviewer", $payload)
+            ->postJson("/editor/peninjauan/{$m->id}/ganti-reviewer", ['review_id' => $review->id, 'reviewer_id' => $baru->id])
             ->assertOk();
 
         $this->assertNotNull($review->fresh()->superseded_at);
@@ -285,6 +293,70 @@ class EditorModuleTest extends TestCase
         $this->assertTrue($m->currentReviews()->where('reviewer_id', $baru->id)->exists());
         $this->assertSame(0, $lama->activeReviewCount());
         $this->assertSame(1, $baru->activeReviewCount());
+        $this->assertContains('review.cancelled', $lama->notifications()->get()->pluck('data.type')->all());
+        $this->assertDatabaseHas('activity_logs', ['action' => 'review.replaced', 'user_id' => $this->editor->id]);
+    }
+
+    public function test_reviewer_yang_sudah_selesai_tidak_dapat_diganti(): void
+    {
+        $m = $this->makeManuscript('ditinjau');
+        $selesai = $this->makeReview($m, $this->makeUser('Reviewer', $this->fieldA), 'selesai', ['recommendation' => 'diterima']);
+
+        $this->actingAs($this->editor)
+            ->postJson("/editor/peninjauan/{$m->id}/ganti-reviewer", ['review_id' => $selesai->id, 'reviewer_id' => $this->makeUser('Reviewer', $this->fieldA)->id])
+            ->assertStatus(422);
+
+        $this->assertNull($selesai->fresh()->superseded_at);
+    }
+
+    public function test_peninjauan_dapat_dibatalkan_sebelum_ada_review_selesai(): void
+    {
+        $m = $this->makeManuscript('ditinjau');
+        $aktif = $this->makeUser('Reviewer', $this->fieldA);
+        $reviews = [
+            $this->makeReview($m, $aktif, 'diterima'),
+            $this->makeReview($m, $this->makeUser('Reviewer', $this->fieldA), 'ditugaskan'),
+            $this->makeReview($m, $this->makeUser('Reviewer', $this->fieldA), 'ditolak_reviewer'),
+        ];
+        $this->actingAs($this->editor);
+
+        $this->assertTrue($this->getJson("/editor/peninjauan/{$m->id}/detail")->json('can_cancel'));
+        $this->postJson("/editor/peninjauan/{$m->id}/batalkan")->assertOk();
+
+        $this->assertSame('pending', $m->fresh()->status);
+        $this->assertSame(0, $m->currentReviews()->count());
+        foreach ($reviews as $review) {
+            $this->assertNotNull($review->fresh()->superseded_at);
+        }
+        $this->assertContains('review.cancelled', $aktif->notifications()->get()->pluck('data.type')->all());
+        $this->assertDatabaseHas('activity_logs', ['action' => 'review.cancelled']);
+
+        // Kembali ke Naskah Baru: editor dapat memilih 3 reviewer lagi.
+        $this->getJson("/editor/naskah/{$m->id}/detail")->assertOk();
+    }
+
+    public function test_peninjauan_naskah_revisi_yang_dibatalkan_kembali_ke_keputusan_editorial(): void
+    {
+        $m = $this->makeManuscript('ditinjau', null, ['revision_file_path' => 'revisions/r.pdf']);
+        $this->makeReview($m, $this->makeUser('Reviewer', $this->fieldA), 'ditugaskan');
+
+        $this->actingAs($this->editor)->postJson("/editor/peninjauan/{$m->id}/batalkan")->assertOk();
+
+        $this->assertSame('menunggu_keputusan', $m->fresh()->status);
+    }
+
+    public function test_peninjauan_tidak_dapat_dibatalkan_bila_sudah_ada_review_selesai(): void
+    {
+        $m = $this->makeManuscript('ditinjau');
+        $this->makeReview($m, $this->makeUser('Reviewer', $this->fieldA), 'selesai', ['recommendation' => 'diterima']);
+        $pending = $this->makeReview($m, $this->makeUser('Reviewer', $this->fieldA), 'diterima');
+        $this->actingAs($this->editor);
+
+        $this->assertFalse($this->getJson("/editor/peninjauan/{$m->id}/detail")->json('can_cancel'));
+        $this->postJson("/editor/peninjauan/{$m->id}/batalkan")->assertStatus(422);
+
+        $this->assertSame('ditinjau', $m->fresh()->status);
+        $this->assertNull($pending->fresh()->superseded_at);
     }
 
     public function test_reviewer_yang_menolak_dapat_diganti_dan_detail_menawarkan_rekomendasi_baru(): void
@@ -360,6 +432,60 @@ class EditorModuleTest extends TestCase
             ->assertOk();
     }
 
+    public function test_lampiran_keputusan_hanya_dapat_dibuka_editor_dan_penulis_naskah(): void
+    {
+        Storage::fake('local');
+        $m = $this->makeManuscript('menunggu_keputusan');
+        $reviewer = $this->makeUser('Reviewer', $this->fieldA);
+        $this->makeReview($m, $reviewer, 'selesai', ['recommendation' => 'revisi_mayor']);
+
+        $this->actingAs($this->editor)->post("/editor/keputusan/{$m->id}", [
+            'decision' => 'revisi_mayor', 'editorial_note' => 'Lihat lampiran.', 'decision_file' => $this->pdf('catatan-perbaikan.pdf'),
+        ], ['Accept' => 'application/json'])->assertOk();
+
+        $m->refresh();
+        Storage::disk('local')->assertExists($m->decision_file_path);
+        $this->assertSame('catatan-perbaikan.pdf', $m->decision_file_name);
+        $this->assertStringContainsString('lampiran', $this->author->notifications()->latest()->first()->data['message']);
+
+        $url = route('files.manuscript', [$m, 'decision']);
+        $this->actingAs($this->author)->get($url)->assertOk();
+        $this->actingAs($this->author)->getJson(route('author.revisions.detail', $m))
+            ->assertJsonPath('manuscript.decision_file_url', $url)
+            ->assertJsonPath('manuscript.decision_file_name', 'catatan-perbaikan.pdf');
+        $this->actingAs($this->editor)->get($url)->assertOk();
+
+        // Reviewer naskah ini dan author lain tidak boleh membuka lampiran untuk penulis.
+        $this->actingAs($reviewer)->get($url)->assertForbidden();
+        $this->actingAs($this->makeUser('Author'))->get($url)->assertForbidden();
+    }
+
+    public function test_keputusan_baru_mengganti_lampiran_lama_dan_berkas_berbahaya_ditolak(): void
+    {
+        Storage::fake('local');
+        $m = $this->makeManuscript('menunggu_keputusan');
+        $this->actingAs($this->editor);
+
+        $this->post("/editor/keputusan/{$m->id}", [
+            'decision' => 'revisi_mayor', 'editorial_note' => 'Catatan',
+            'decision_file' => UploadedFile::fake()->createWithContent('catatan.pdf', '<?php echo 1;'),
+        ], ['Accept' => 'application/json'])->assertStatus(422)->assertJsonValidationErrors('decision_file');
+        $this->assertSame('menunggu_keputusan', $m->fresh()->status);
+
+        $this->post("/editor/keputusan/{$m->id}", [
+            'decision' => 'revisi_mayor', 'editorial_note' => 'Catatan', 'decision_file' => $this->pdf('ronde-1.pdf'),
+        ], ['Accept' => 'application/json'])->assertOk();
+        $firstFile = $m->fresh()->decision_file_path;
+
+        // Author mengirim revisi, lalu editor memutuskan lagi tanpa lampiran: lampiran ronde lama dihapus.
+        $m->refresh()->update(['status' => 'menunggu_keputusan']);
+        $this->postJson("/editor/keputusan/{$m->id}", ['decision' => 'diterima'])->assertOk();
+
+        Storage::disk('local')->assertMissing($firstFile);
+        $this->assertNull($m->fresh()->decision_file_path);
+        $this->get(route('files.manuscript', [$m, 'decision']))->assertNotFound();
+    }
+
     public function test_keputusan_hanya_untuk_naskah_menunggu_keputusan(): void
     {
         $m = $this->makeManuscript('ditinjau');
@@ -371,7 +497,7 @@ class EditorModuleTest extends TestCase
     public function test_detail_keputusan_memuat_rekap_review_dan_berkas_revisi(): void
     {
         $m = $this->makeManuscript('menunggu_keputusan', null, ['revision_file_path' => 'revisi/a.pdf']);
-        $this->makeReview($m, $this->makeUser('Reviewer', $this->fieldA), 'selesai', ['recommendation' => 'revisi_minor', 'comments' => 'Perbaiki bab 3']);
+        $this->makeReview($m, $this->makeUser('Reviewer', $this->fieldA), 'selesai', ['recommendation' => 'revisi_minor', 'notes_for_editor' => 'Perbaiki bab 3']);
         $this->makeReview($m, $this->makeUser('Reviewer', $this->fieldA), 'selesai', ['recommendation' => 'revisi_minor']);
         $this->makeReview($m, $this->makeUser('Reviewer', $this->fieldA), 'selesai', ['recommendation' => 'ditolak']);
 
@@ -379,7 +505,7 @@ class EditorModuleTest extends TestCase
 
         $this->assertCount(3, $json['reviews']);
         $this->assertSame('3 dari 3 reviewer telah selesai', $json['progress']['label']);
-        $this->assertContains('Perbaiki bab 3', array_column($json['reviews'], 'comments'));
+        $this->assertContains('Perbaiki bab 3', array_column($json['reviews'], 'notes_for_editor'));
         $this->assertEqualsCanonicalizing(
             [['Revisi Minor', 2], ['Ditolak', 1]],
             array_map(fn ($s) => [$s['label'], $s['count']], $json['summary'])
@@ -403,12 +529,12 @@ class EditorModuleTest extends TestCase
             ->assertSessionHasErrors('number'); // duplikat
 
         $approved = $this->makeManuscript('disetujui');
-        $pending  = $this->makeManuscript('pending');
+        $pending = $this->makeManuscript('pending');
 
         // naskah belum disetujui tidak boleh ditambahkan
         $this->post("/editor/edisi/{$issue->id}/naskah", [
             'manuscript_id' => $pending->id,
-            'final_file'    => $this->pdf('final.pdf'),
+            'final_file' => $this->pdf('final.pdf'),
         ])->assertSessionHas('error');
         $this->assertNull($pending->fresh()->issue_id);
 
@@ -419,12 +545,12 @@ class EditorModuleTest extends TestCase
         // file bukan PDF ditolak
         $this->post("/editor/edisi/{$issue->id}/naskah", [
             'manuscript_id' => $approved->id,
-            'final_file'    => UploadedFile::fake()->create('final.docx', 100, 'application/msword'),
+            'final_file' => UploadedFile::fake()->create('final.docx', 100, 'application/msword'),
         ])->assertSessionHasErrors('final_file');
 
         $this->post("/editor/edisi/{$issue->id}/naskah", [
             'manuscript_id' => $approved->id,
-            'final_file'    => $this->pdf('final.pdf'),
+            'final_file' => $this->pdf('final.pdf'),
         ])->assertSessionHas('success');
 
         $approved->refresh();
@@ -439,6 +565,46 @@ class EditorModuleTest extends TestCase
 
         // edisi terbit terkunci
         $this->delete("/editor/edisi/{$issue->id}/naskah/{$approved->id}")->assertSessionHas('error');
+    }
+
+    public function test_naskah_dapat_dikeluarkan_dari_edisi_draft(): void
+    {
+        Storage::fake('local');
+        $issue = Issue::create(['volume' => 1, 'number' => 1, 'year' => 2026]);
+        $m = $this->makeManuscript('disetujui');
+        $this->actingAs($this->editor)->post("/editor/edisi/{$issue->id}/naskah", [
+            'manuscript_id' => $m->id,
+            'final_file' => $this->pdf('final.pdf'),
+        ])->assertSessionHas('success');
+        $finalPath = $m->fresh()->final_file_path;
+
+        $this->delete("/editor/edisi/{$issue->id}/naskah/{$m->id}")->assertSessionHas('success');
+
+        $m->refresh();
+        $this->assertNull($m->issue_id);
+        $this->assertNull($m->final_file_path);
+        $this->assertSame('disetujui', $m->status);
+        Storage::disk('local')->assertMissing($finalPath);
+
+        // Naskah kembali ke antrean dan dapat ditambahkan lagi.
+        $this->get("/editor/edisi?issue={$issue->id}")->assertOk()->assertSee($m->title);
+    }
+
+    public function test_langkah_edisi_tercatat_di_log_aktivitas(): void
+    {
+        Storage::fake('local');
+        $this->actingAs($this->editor);
+        $this->post('/editor/edisi', ['volume' => 3, 'number' => 1, 'year' => 2026])->assertSessionHasNoErrors();
+        $issue = Issue::firstOrFail();
+        $m = $this->makeManuscript('disetujui');
+
+        $this->post("/editor/edisi/{$issue->id}/naskah", ['manuscript_id' => $m->id, 'final_file' => $this->pdf('final.pdf')]);
+        $this->patch("/editor/edisi/{$issue->id}/naskah/{$m->id}/doi", ['doi' => '10.12345/simpil.2026.001']);
+        $this->delete("/editor/edisi/{$issue->id}/naskah/{$m->id}");
+
+        foreach (['issue.created', 'issue.manuscript_attached', 'manuscript.doi', 'issue.manuscript_detached'] as $action) {
+            $this->assertDatabaseHas('activity_logs', ['action' => $action, 'user_id' => $this->editor->id]);
+        }
     }
 
     public function test_publikasi_ditolak_bila_ada_naskah_tanpa_file_final(): void
@@ -522,6 +688,7 @@ class EditorModuleTest extends TestCase
         $this->assertNotNull($old->fresh()->superseded_at);           // tetapi ronde baru mulai dari nol
         $this->assertSame(4, $m->reviews()->count());
         $this->assertSame(3, $m->currentReviews()->where('status', 'ditugaskan')->count());
+        $this->assertDatabaseHas('activity_logs', ['action' => 'manuscript.rereview', 'user_id' => $this->editor->id]);
     }
 
     public function test_review_ulang_hanya_untuk_naskah_revisi(): void

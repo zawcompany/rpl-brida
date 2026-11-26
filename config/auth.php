@@ -41,6 +41,8 @@ return [
         'web' => [
             'driver' => 'session',
             'provider' => 'users',
+            // Masa berlaku "Ingat saya" dalam menit (bawaan Laravel 400 hari, terlalu lama untuk sistem jurnal).
+            'remember' => (int) env('AUTH_REMEMBER_MINUTES', 60 * 24 * 30),
         ],
     ],
 

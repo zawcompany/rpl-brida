@@ -28,10 +28,9 @@
                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
                                   :class="r.recommendation_class" x-text="r.recommendation_label ?? 'Tanpa rekomendasi'"></span>
                         </div>
-                        <p class="text-sm text-gray-700 mt-2 whitespace-pre-line" x-text="r.comments || 'Tanpa catatan.'"></p>
-                        <p x-show="r.notes_for_editor" class="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 whitespace-pre-line">
-                            <span class="block text-xs font-semibold uppercase tracking-wider text-amber-700">Catatan rahasia untuk editor</span>
-                            <span x-text="r.notes_for_editor"></span>
+                        <p class="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 whitespace-pre-line">
+                            <span class="block text-xs font-semibold uppercase tracking-wider text-amber-700">Catatan reviewer untuk editor</span>
+                            <span x-text="r.notes_for_editor || 'Tanpa catatan.'"></span>
                         </p>
                         <div class="flex flex-wrap gap-1.5 mt-2" x-show="(r.scores ?? []).some(s => s.value)">
                             <template x-for="s in r.scores ?? []" :key="s.label">
@@ -51,11 +50,11 @@
             </div>
         </div>
 
-        <x-editor.file-preview label="Berkas Naskah" url="detail.manuscript.file_url" :preview="false" />
+        <x-editor.file-preview label="Berkas Naskah" url="detail?.manuscript?.file_url" :preview="false" />
 
         {{-- Berkas revisi dari author (jika ada) --}}
         <div x-show="detail?.manuscript?.revision_file_url">
-            <x-editor.file-preview label="Berkas Revisi dari Author" url="detail.manuscript.revision_file_url" :preview="false" />
+            <x-editor.file-preview label="Berkas Revisi dari Author" url="detail?.manuscript?.revision_file_url" :preview="false" />
         </div>
 
         <hr class="border-gray-100">
@@ -84,7 +83,7 @@
                     <select :id="`d-reviewer-${i}`" x-model="form.reviewer_ids[i]"
                             class="w-full text-sm border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-red-500 focus:border-red-500 bg-white">
                         <option value="">— Pilih Reviewer —</option>
-                        <template x-for="r in detail?.reviewers ?? []" :key="r.id">
+                        <template x-for="r in availableReviewers(detail?.reviewers, form.reviewer_ids, i)" :key="r.id">
                             <option :value="String(r.id)" x-text="`${r.name} (${r.active_load} naskah aktif)`"></option>
                         </template>
                     </select>
@@ -125,6 +124,18 @@
                 </label>
                 <textarea id="d-note" x-model="form.editorial_note" rows="4" placeholder="Tulis catatan untuk penulis..."
                           class="w-full text-sm border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"></textarea>
+                <p class="text-xs text-gray-500 mt-1">Hanya catatan ini yang dibaca penulis. Catatan reviewer tidak pernah diteruskan; rangkum masukannya dengan kata-kata Anda sendiri tanpa menyebut identitas reviewer.</p>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1.5" for="d-file">
+                    Lampiran untuk Penulis <span class="font-normal text-gray-400">(opsional, PDF/DOCX maks. 10 MB)</span>
+                </label>
+                <input id="d-file" type="file" x-ref="decisionFile" accept=".pdf,.docx" @change="decisionFile = $event.target.files[0] ?? null"
+                       class="block w-full text-sm text-gray-600 border border-gray-300 rounded-lg cursor-pointer bg-white file:mr-3 file:py-2.5 file:px-4 file:border-0 file:bg-red-50 file:text-red-700 file:font-medium hover:file:bg-red-100">
+                <p class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-2">
+                    Unggah berkas yang Anda siapkan sendiri, mis. rangkuman catatan perbaikan. Jangan meneruskan berkas reviewer apa adanya:
+                    pastikan tidak ada nama reviewer di isi berkas, komentar/anotasi PDF, maupun properti dokumen.
+                </p>
             </div>
         </form>
 
@@ -147,6 +158,7 @@ function decisionModal() {
         mode: 'direct',
         rereviewUrl: @js(route('editor.decisions.rereview', '__ID__')),
         form: { decision: '', editorial_note: '', reviewer_ids: ['', '', ''], due_at: '', editor_note: '' },
+        decisionFile: null, // lampiran opsional untuk penulis
 
         onLoaded(d) { this.form.due_at = d.default_due_at; },
 
@@ -156,6 +168,8 @@ function decisionModal() {
             this.manuscriptId = id;
             this.mode = 'direct';
             this.form = { decision: '', editorial_note: '', reviewer_ids: ['', '', ''], due_at: '', editor_note: '' };
+            this.decisionFile = null;
+            this.$nextTick(() => { if (this.$refs.decisionFile) this.$refs.decisionFile.value = ''; });
             this.openModal(this.detailUrl.replace('__ID__', id));
         },
 
@@ -173,7 +187,17 @@ function decisionModal() {
                 this.errorMsg = 'Catatan editorial wajib diisi untuk revisi atau penolakan.';
                 return;
             }
-            this.submit(this.storeUrl.replace('__ID__', this.manuscriptId), this.form);
+            if (this.decisionFile && this.decisionFile.size > 10 * 1024 * 1024) { this.errorMsg = 'Ukuran lampiran maksimal 10 MB.'; return; }
+
+            // Dengan lampiran: kirim multipart (FormData); tanpa lampiran: JSON seperti biasa.
+            let body = { decision: this.form.decision, editorial_note: this.form.editorial_note };
+            if (this.decisionFile) {
+                body = new FormData();
+                body.append('decision', this.form.decision);
+                body.append('editorial_note', this.form.editorial_note ?? '');
+                body.append('decision_file', this.decisionFile);
+            }
+            this.submit(this.storeUrl.replace('__ID__', this.manuscriptId), body);
         },
     });
 }

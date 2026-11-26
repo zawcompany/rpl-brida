@@ -49,7 +49,10 @@ class IssueService
             $data['cover_image'] = $this->covers->put($cover);
         }
 
-        return Issue::create($data + ['status' => Issue::DRAFT]);
+        $issue = Issue::create($data + ['status' => Issue::DRAFT]);
+        ActivityLog::record('issue.created', "Edisi {$issue->label} dibuat");
+
+        return $issue;
     }
 
     /**
@@ -81,6 +84,8 @@ class IssueService
             $this->covers->delete($oldCover);
         }
 
+        ActivityLog::record('issue.updated', "Edisi {$issue->label} diubah");
+
         return $issue;
     }
 
@@ -95,6 +100,7 @@ class IssueService
 
         $issue->delete();
         $this->covers->delete($issue->cover_image);
+        ActivityLog::record('issue.deleted', "Edisi {$issue->label} dihapus");
     }
 
     // -------------------------------------------------------------------------
@@ -147,6 +153,7 @@ class IssueService
         ]);
 
         $this->files->delete($oldPath);
+        ActivityLog::record('issue.manuscript_attached', "Naskah \"{$manuscript->title}\" ditetapkan pada edisi {$issue->label}");
 
         return $manuscript;
     }
@@ -167,6 +174,8 @@ class IssueService
             'final_file_path' => null,
             'final_original_name' => null,
         ]);
+
+        ActivityLog::record('issue.manuscript_detached', "Naskah \"{$manuscript->title}\" dikeluarkan dari edisi {$issue->label}");
     }
 
     /**
@@ -183,6 +192,9 @@ class IssueService
         }
 
         $manuscript->update(['doi' => $doi]);
+        ActivityLog::record('manuscript.doi', $doi
+            ? "DOI {$doi} ditetapkan untuk naskah \"{$manuscript->title}\""
+            : "DOI naskah \"{$manuscript->title}\" dihapus");
     }
 
     // -------------------------------------------------------------------------

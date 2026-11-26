@@ -105,15 +105,21 @@
                 </div>
 
                 <!-- Lupa Password & Remember Me -->
+                <div x-data="{ forgot: false }">
                 <div class="flex items-center justify-between pt-1">
-                    <label class="flex items-center cursor-pointer group">
-                        <input id="remember_me" name="remember" type="checkbox" class="h-4 w-4 text-red-600 focus:ring-red-600 border-gray-300 rounded cursor-pointer">
+                    <label class="flex items-center cursor-pointer group" title="Tetap masuk selama 30 hari walaupun browser ditutup. Jangan dicentang di komputer umum.">
+                        <input id="remember_me" name="remember" type="checkbox" value="1" @checked(old('remember')) class="h-4 w-4 text-red-600 focus:ring-red-600 border-gray-300 rounded cursor-pointer">
                         <span class="ml-2 block text-xs sm:text-sm text-gray-700 group-hover:text-gray-900 transition-colors">Ingat saya</span>
                     </label>
 
-                    <a href="#" class="text-xs sm:text-sm font-medium text-red-600 hover:text-red-700 transition-colors">
+                    <button type="button" @click="forgot = !forgot" :aria-expanded="forgot" class="text-xs sm:text-sm font-medium text-red-600 hover:text-red-700 transition-colors">
                         Lupa password?
-                    </a>
+                    </button>
+                </div>
+                <p class="mt-1 text-xs text-gray-500">Tanpa "Ingat saya", Anda otomatis keluar saat browser ditutup.</p>
+                <p x-show="forgot" x-cloak class="mt-2 text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+                    Hubungi administrator SIMPIL untuk mengatur ulang password. Administrator akan memberikan password sementara yang dapat Anda ganti di menu Profil.
+                </p>
                 </div>
 
                 <!-- Submit Button -->

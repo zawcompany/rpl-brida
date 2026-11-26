@@ -27,6 +27,21 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
         $middleware->appendToGroup('web', EnsureAccountActive::class);
         $middleware->appendToGroup('web', EnsurePolicyConsent::class);
+        // Halaman HTML tidak disimpan di cache browser: tombol Back memuat ulang dari server, sehingga header
+        // (Masuk/Daftar vs Dashboard) selalu sesuai status login, dan halaman dalam tidak tampil setelah keluar.
+        $middleware->appendToGroup('web', PreventBackHistory::class);
+
+        // Pengguna yang sudah masuk lalu membuka Masuk/Daftar diarahkan ke dashboard dengan penjelasan.
+        $middleware->redirectUsersTo(function (Request $request): string {
+            if ($request->routeIs('register', 'login') && $request->hasSession()) {
+                $request->session()->flash(
+                    'auth_notice',
+                    'Anda sudah masuk sebagai '.$request->user()?->name.'. Keluar terlebih dahulu bila ingin masuk atau mendaftar dengan akun lain.'
+                );
+            }
+
+            return route('dashboard');
+        });
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // 419: token CSRF/sesi kedaluwarsa (mis. tab lama dibuka kembali) -> login ulang yang mulus

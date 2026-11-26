@@ -14,7 +14,15 @@
         @endif
     </td>
     <td class="px-6 py-4">
-        <x-editor.action-button modal="review-form" :id="$review->id" :label="$review->isActive() ? 'Lanjutkan Review' : 'Lihat Detail'" />
+        @php
+            $actionLabel = match (true) {
+                $review->superseded_at !== null => 'Lihat Detail',
+                $review->status === 'ditugaskan' => 'Lihat & Respon',
+                $review->status === 'diterima' => 'Lanjutkan Review',
+                default => 'Lihat Detail',
+            };
+        @endphp
+        <x-editor.action-button modal="review-form" :id="$review->id" :label="$actionLabel" />
     </td>
 </tr>
 @empty

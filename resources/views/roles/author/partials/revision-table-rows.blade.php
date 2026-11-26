@@ -1,4 +1,4 @@
-{{-- Baris tabel Hasil Review & Revisi. Prop: $rows (naskah berstatus 'revisi') --}}
+{{-- Baris tabel Catatan Editor & Revisi. Prop: $rows (naskah berstatus 'revisi') --}}
 @forelse ($rows as $manuscript)
 <tr class="hover:bg-gray-50/60 transition-colors">
     <td class="px-6 py-4 max-w-[260px]">

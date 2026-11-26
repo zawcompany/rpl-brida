@@ -5,8 +5,8 @@ namespace Database\Seeders;
 use App\Models\Issue;
 use App\Models\Journal;
 use App\Models\Manuscript;
-use App\Models\Review;
 use App\Models\ResearchField;
+use App\Models\Review;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -82,25 +82,25 @@ class DatabaseSeeder extends Seeder
         $manuscripts = [
             ['title' => 'Implementasi Deep Learning untuk Deteksi Anomali Jaringan', 'status' => 'pending',            'field_idx' => 0],
             ['title' => 'Analisis Performa Algoritma Sorting pada Dataset Besar',    'status' => 'pemeriksaan_awal',   'field_idx' => 1],
-            ['title' => 'Sistem Rekomendasi Kolaboratif Berbasis Faktorisasi Matriks','status' => 'ditinjau',           'field_idx' => 3],
-            ['title' => 'Evaluasi Keamanan Protokol TLS 1.3 pada Infrastruktur Cloud','status' => 'menunggu_keputusan','field_idx' => 4],
+            ['title' => 'Sistem Rekomendasi Kolaboratif Berbasis Faktorisasi Matriks', 'status' => 'ditinjau',           'field_idx' => 3],
+            ['title' => 'Evaluasi Keamanan Protokol TLS 1.3 pada Infrastruktur Cloud', 'status' => 'menunggu_keputusan', 'field_idx' => 4],
             ['title' => 'Pengembangan Chatbot Cerdas dengan Transformer Architecture', 'status' => 'disetujui',        'field_idx' => 3],
             ['title' => 'Optimasi Query Database NoSQL untuk Aplikasi Real-time',     'status' => 'pending',           'field_idx' => 2],
         ];
 
         $editor = User::where('email', 'editor@example.com')->first();
-        $saved  = [];
+        $saved = [];
 
         foreach ($manuscripts as $ms) {
             $saved[$ms['status']][] = Manuscript::updateOrCreate(
                 ['title' => $ms['title']],
                 [
-                    'author_id'          => $author->id,
-                    'research_field_id'  => $createdFields[$ms['field_idx']]->id,
-                    'abstract'           => 'Ini adalah abstrak singkat dari naskah ilmiah berjudul "' . $ms['title'] . '". Penelitian ini bertujuan untuk mengeksplorasi topik yang relevan dengan perkembangan teknologi terkini.',
-                    'keywords'           => 'machine learning, deep learning, penelitian, teknologi, inovasi',
-                    'status'             => $ms['status'],
-                    'submitted_at'       => now()->subDays(rand(1, 30)),
+                    'author_id' => $author->id,
+                    'research_field_id' => $createdFields[$ms['field_idx']]->id,
+                    'abstract' => 'Ini adalah abstrak singkat dari naskah ilmiah berjudul "'.$ms['title'].'". Penelitian ini bertujuan untuk mengeksplorasi topik yang relevan dengan perkembangan teknologi terkini.',
+                    'keywords' => 'machine learning, deep learning, penelitian, teknologi, inovasi',
+                    'status' => $ms['status'],
+                    'submitted_at' => now()->subDays(rand(1, 30)),
                 ]
             );
         }
@@ -116,12 +116,12 @@ class DatabaseSeeder extends Seeder
         Review::firstOrCreate(
             ['manuscript_id' => $saved['menunggu_keputusan'][0]->id, 'reviewer_id' => $reviewer3->id],
             [
-                'assigned_by'    => $editor->id,
-                'status'         => 'selesai',
+                'assigned_by' => $editor->id,
+                'status' => 'selesai',
                 'recommendation' => 'revisi_minor',
-                'comments'       => 'Metodologi sudah baik. Mohon perjelas bagian analisis hasil dan tambahkan referensi terbaru.',
-                'due_at'         => now()->subDays(2),
-                'completed_at'   => now()->subDays(3),
+                'notes_for_editor' => 'Metodologi sudah baik. Mohon perjelas bagian analisis hasil dan tambahkan referensi terbaru.',
+                'due_at' => now()->subDays(2),
+                'completed_at' => now()->subDays(3),
             ]
         );
 
